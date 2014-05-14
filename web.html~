@@ -1,0 +1,108 @@
+<html>
+    <style>
+        .fileExplorer .element .type {
+            display: block;
+            width : 40px;
+            max-width : 40px;
+            float: left;
+        }
+    </style>
+    <script src="jquery-1.11.1.min.js"></script>
+    <script>
+        currentPath = new Array(); //stack like
+        token = '';
+        wsUrl = 'http://127.0.0.1:3000/';
+        
+        /**
+         *  @param Array
+         *
+         *  @returns String
+         */
+        function pathToString(path) {
+            var pathString = path.join('/');
+	    if(pathString.length > 1)
+		pathString = pathString + "/";
+            return pathString;
+        }
+        
+        function getPathListFromWS(path) {
+            $.ajax({
+                type: "POST",
+                url: wsUrl + 'list',
+                data: 'path=' + pathToString(path),
+                success: function(data){
+                    displayPath(data,path);
+                },
+                dataType: 'json'
+              });
+        }
+        
+        function listPath(folder) {
+            newPath = currentPath;
+            newPath.push(folder);
+            getPathListFromWS(currentPath);
+        }
+
+        function listParentPath(path) {
+        	
+        }
+        
+	function clickOnFolder(folder){
+		listPath(folder);
+	}
+
+	function refreshNaBar() {
+	  	//first remove all previous elements
+	   	$('.navTab').html('');
+		$('.navTab').append('<span><a href="#" onclick="return false;">Home</a></span> / ');
+		for(var i in currentPath) {
+			if(i>0) {
+				$('.navTab').append('<span><a href="#" onclick="return false;">' + currentPath[i] + '</a></span> / ');
+			}
+		}
+	}
+
+	function downloadFile() {
+
+	}
+
+        function displayPath(json,newPath) {
+	    //first remove all previous elements
+
+	    $('.fileExplorer').html('');
+	    
+            for(i in json) {
+		if(json[i][0] == 'D') { //directory
+                	$('.fileExplorer').append('<div class=\'element\'>'+
+                                         	  '<span class=\'type\'>' + json[i][0] + '</span>' +
+						  '<span class=\'name\'><a href="#" onclick="listPath(\'' + json[i][1] + '\'); return false;">' + json[i][1] + '</a></span>' + 			                         	  '</div>');
+		}
+		else {	//file
+                	$('.fileExplorer').append('<div class=\'element\'>'+
+                                         	  '<span class=\'type\'>' + json[i][0] + '</span>' +
+                                         	  '<span class=\'name\'>' + json[i][1] + '</span>' +
+						  '<span class=\'download\'><a href="#" onclick="clickOnFolder(\'' + json[i][1] + '\'); return false;">download</a></span>' +
+                                         	  '</div>');
+		}
+            }
+            currentPath = newPath;
+	    refreshNaBar();
+        }
+        
+        
+        $( document ).ready(function() {
+            listPath(currentPath);
+        });
+
+
+    </script>
+    <div class="actionTab">
+
+    </div>
+    <div class="navTab">
+
+    </div>
+    <div class='fileExplorer'>
+        
+    </div>
+</html>
