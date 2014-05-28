@@ -1,6 +1,36 @@
 var fs = require('fs');
+var net = require('http');
 var express = require("express");
 var bodyParser = require('body-parser');
+
+/***
+ *  création du socket pour l'upload
+ *
+ ***/
+
+var handleHttpReq = function (req, res) {
+  var body = "";
+  req.on('data', function (chunk) {
+    body += chunk;
+    req.pause();
+    setTimeout(function() {
+   	 console.log('now data will start flowing again');
+    	req.resume();
+    }, 1000);
+  });
+  req.on('end', function () {
+    //console.log('POSTed: ' + body);
+    res.writeHead(200);
+    res.end("");
+  });
+}
+
+var socketServer = net.createServer(handleHttpReq)
+.listen(9999, function(){
+        console.log('SOCKET SERVER Listening at: http://localhost:9999');
+});
+
+
 
 /***
  *  creation of webserver
@@ -70,4 +100,4 @@ app.post('/list', function(req, response){
    
 });
 
-//TODO Upload, move, copy, delete
+//TODO upload,download , move, copy, delete

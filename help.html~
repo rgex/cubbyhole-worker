@@ -6,6 +6,13 @@ path : <input type="text" name="path"><br/>
 
 <form action="http://127.0.0.1:3000/createUser" method="POST">
 <h1>Create User</h1>
-path : <input type="text" name="path"><br/>
+userId : <input type="text" name="userId"><br/>
+<input type="submit">
+</form>
+
+
+<form action="http://127.0.0.1:9999/" method="POST" enctype="multipart/form-data">
+<h1>Upload</h1>
+file : <input type="file" name="file"><br/>
 <input type="submit">
 </form>
