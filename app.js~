@@ -12,7 +12,7 @@ var qs = require('querystring');
 
 var handleHttpReq = function (req, res) {
 	if (req.url === '/upload' && req.method === 'POST') {
-		  var data = "";
+		  var firstChunk = true;
 
 		  req.on('request', function (req, res) {
 		   	console.log(request);
@@ -20,11 +20,12 @@ var handleHttpReq = function (req, res) {
 
 		  req.on('data', function (chunk) {
 		  	//if data is empty then we need to extract the headers from it
-			if(data.length < 1) {
+			if(firstChunk) {
 				var i = 0;
 				var done = false;
 				var contentTypeFound = false;
 				var postData = new Array();
+				firstChunk = false;
 				while(!done) {
 					if(chunk.toString("utf-8",i,i+2) === "\x0D\x0A") {
 						if(chunk.toString("utf-8",i,i+4) === "\x0D\x0A\x0D\x0A" && !contentTypeFound) {
@@ -57,6 +58,7 @@ var handleHttpReq = function (req, res) {
 
 				var token = postData[0];
 				var path = postData[1];
+
 				console.log("token : " + token);
 				console.log("path : " + path);
 				console.log("fileName : " + fileName);
@@ -64,13 +66,17 @@ var handleHttpReq = function (req, res) {
 				var userId = 1;
 				var speed = 100; // ko/s
 
-				if(fs.existsSync("/iscsi/" + userId + path + fileName) && fs.lstatSync("/iscsi/" + path + fileName).isFile())
+				if(fs.existsSync("/iscsi/" + userId + path + fileName) && fs.lstatSync("/iscsi/" + userId + path + fileName).isFile())
 		    			fs.unlinkSync("/iscsi/" + userId + path + fileName);
-		    		fs.writeFileSync("/iscsi/" + userId + path + fileName, chunk.slice(i+3,chunk.length));
-				console.log(chunk.toString());
+				fd = fs.openSync("/iscsi/" + userId + path + fileName,'a');
+		    		var nbrOfWritenBytes = fs.writeSync(fd, chunk.slice(i+3,chunk.length), 0, (chunk.length - (i+3)), 0);
+				//console.log(chunk.toString());
+				console.log("state 1");
 			}
 			else {
-		    		fs.writeFileSync("/iscsi/" + userId + path + fileName, chunk);
+				console.log("state 2");
+				//console.log(chunk.toString());
+		    		nbrOfWritenBytes += fs.writeSync(fd, chunk, 0, chunk.length, nbrOfWritenBytes);
 		    		req.pause();
 		   		setTimeout(function() {
 		   	 		console.log('now upload will start flowing again');
@@ -81,11 +87,12 @@ var handleHttpReq = function (req, res) {
 
 		req.on('end', function () {
 
-
-		    console.log("ended");
-		    
-		    res.writeHead(200);
-		    res.end("");
+		    setTimeout(function() {
+			    console.log("ended");
+			    
+			    res.writeHead(200);
+			    res.end("");
+		    },300);
 		});
 	}
 

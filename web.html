@@ -1,12 +1,30 @@
 <html>
     <style>
+	.content {
+		width: 850px;
+		margin-left:auto;
+		margin-right:auto;
+	}
         .fileExplorer .element .type {
             display: block;
             width : 40px;
             max-width : 40px;
             float: left;
         }
+	.fileExplorer .element .name {
+            display: block;
+            width : 450px;
+            max-width : 450px;
+            float: left;
+        }
+	.fileExplorer .element-0 {
+
+	}
+	.fileExplorer .element-1 {
+		background-color: #f5f5f5;
+	}
     </style>
+    <link rel="stylesheet" href="css/bootstrap.min.css">
     <script src="jquery-1.11.1.min.js"></script>
     <script>
         currentPath = new Array(); //stack like
@@ -21,10 +39,14 @@
         function pathToString(path) {
             var pathString = path.join('/');
 	    if(pathString.length > 1)
-		pathString = pathString + "/";
+		pathString = "/" + pathString + "/";
             return pathString;
         }
-        
+
+	function gotoFolderInPath(i) {
+		currentPath = currentPath.slice(0, i);
+		getPathListFromWS(currentPath);
+	}
         function getPathListFromWS(path) {
             $.ajax({
                 type: "POST",
@@ -54,11 +76,9 @@
 	function refreshNaBar() {
 	  	//first remove all previous elements
 	   	$('.navTab').html('');
-		$('.navTab').append('<span><a href="#" onclick="return false;">Home</a></span> / ');
+		$('.navTab').append('<span><a href="#" onclick="gotoFolderInPath(0); return false;">Home</a></span> / ');
 		for(var i in currentPath) {
-			if(i>0) {
-				$('.navTab').append('<span><a href="#" onclick="return false;">' + currentPath[i] + '</a></span> / ');
-			}
+			$('.navTab').append('<li><a href="#" onclick="gotoFolderInPath(' + (i+1) + '); return false;">' + currentPath[i] + '</a></li>');
 		}
 	}
 
@@ -73,16 +93,22 @@
 	    
             for(i in json) {
 		if(json[i][0] == 'D') { //directory
-                	$('.fileExplorer').append('<div class=\'element\'>'+
-                                         	  '<span class=\'type\'>' + json[i][0] + '</span>' +
-						  '<span class=\'name\'><a href="#" onclick="listPath(\'' + json[i][1] + '\'); return false;">' + json[i][1] + '</a></span>' + 			                         	  '</div>');
+                	$('.fileExplorer').append('<div class="element element-' + i%2 + '" style="background-color:#ff0000">'+
+                                         	  '<span class="type"><img src="img/folder.gif"></span>' +
+						  '<span class="name"><a href="#" onclick="listPath(\'' + json[i][1] + '\'); return false;">' + json[i][1] + '</a></span>' +
+						  '<span class="delete"></span>' +
+						  '<span class="download"></span>' +
+ 			                          '</div>' +
+						  '<div style="clear:both;"></div>');
 		}
 		else {	//file
-                	$('.fileExplorer').append('<div class=\'element\'>'+
-                                         	  '<span class=\'type\'>' + json[i][0] + '</span>' +
-                                         	  '<span class=\'name\'>' + json[i][1] + '</span>' +
-						  '<span class=\'download\'><a href="#" onclick="clickOnFolder(\'' + json[i][1] + '\'); return false;">download</a></span>' +
-                                         	  '</div>');
+                	$('.fileExplorer').append('<div class="element element-' + i%2 + '">'+
+                                         	  '<span class="type"><img src="img/file.png"></span>' +
+                                         	  '<span class="name">' + json[i][1] + '</span>' +
+						  '<span class="delete"></span>' +
+						  '<span class="download"><a href="#" onclick="clickOnFolder(\'' + json[i][1] + '\'); return false;">download</a></span>' +
+                                         	  '</div>'+
+						  '<div style="clear:both;"></div>');
 		}
             }
             currentPath = newPath;
@@ -91,18 +117,22 @@
         
         
         $( document ).ready(function() {
-            listPath(currentPath);
+            getPathListFromWS(currentPath);
         });
 
 
     </script>
+<div class="content">
     <div class="actionTab">
 <button>New Folder</button>
-    </div>
-    <div class="navTab">
 
+<br/>
     </div>
+    <ol class="navTab breadcrumb">
+
+    </ol>
     <div class='fileExplorer'>
         
     </div>
+</div>
 </html>
