@@ -4,6 +4,8 @@ var express = require("express");
 var bodyParser = require('body-parser');
 var multipart = require('multipart');
 var qs = require('querystring');
+var pathHelper = require('path');
+var urlHelper = require('url');
 
 /***
  *  création du socket pour l'upload
@@ -99,9 +101,13 @@ var handleHttpReq = function (req, res) {
 	DownloadWTokenRegex = new RegExp('^.{0,}download/\\?userid=(.{1,})&file=(.{1,})&token=(.{1,})$','i'); //not very secured
 	if(DownloadWTokenRegex.test(req.url)) { //download with token
 		console.log("download with token");
-		var filePath = "/iscsi/1/big.mp4";
-   		var fileStat = fs.statSync(filePath);
-		res.writeHead(200);
+		var resRegex = DownloadWTokenRegex.exec(req.url);
+		var urlParts = urlHelper.parse(req.url, true);
+		console.log(urlParts);
+		var filePath = '/iscsi/' + urlParts.query.userid + urlParts.query.file;
+   		var fileStat = fs.lstatSync(filePath);
+		//res.writeHead(200);
+		res.writeHead(200, { 'Content-Type': 'application/force-download', 'Content-Length': fileStat.size, 'Content-disposition' : 'attachment; filename=' + pathHelper.basename(filePath) });
 		var readStream = fs.createReadStream(filePath, { bufferSize: 64 * 1024 });
 		readStream.on("data", function(data) {
 			readStream.pause();
@@ -109,13 +115,14 @@ var handleHttpReq = function (req, res) {
 					res.write(data);
 		   	 		console.log('now download will start flowing again');
 		    			readStream.resume();
-		    	}, 50);
+		    	}, 100);
 		});
 
 		readStream.on("end", function() {
+			console.log("download done");
 			setTimeout(function() {
 					res.end("");
-		    	}, 300);
+		    	}, 500);
 		});
 	}
 
@@ -148,9 +155,70 @@ app.use(bodyParser());
 ***/
 app.post('/createUser', function(req, response){
 
-	//check masterKey
+	//TODO check masterKey
    	var userId = req.body.userId;
 	fs.mkdirSync('/iscsi/' + userId,0777);
+	response.setHeader('Access-Control-Allow-Origin', '*');
+	response.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
+	response.end('{"result":"success"}');
+});
+
+/***
+*
+*	create folder
+*	@require 
+*	- masterKey
+*	- userId
+*	
+*
+***/
+app.post('/createFolder', function(req, response){
+
+	//TODO get userID
+   	var userId = 1;
+	fs.mkdirSync('/iscsi/' + userId + req.body.path + req.body.folderName,0777);
+	response.setHeader('Access-Control-Allow-Origin', '*');
+	response.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
+	response.end('{"result":"success"}');
+});
+
+var deleteFolderRecursive = function(path) {
+  if( fs.existsSync(path) ) {
+    fs.readdirSync(path).forEach(function(file,index){
+      var curPath = path + "/" + file;
+      if(fs.lstatSync(curPath).isDirectory()) { // recurse
+        deleteFolderRecursive(curPath);
+      } else { // delete file
+        fs.unlinkSync(curPath);
+      }
+    });
+    fs.rmdirSync(path);
+  }
+};
+
+/***
+*
+*	delete a file or a folder
+*	@require 
+*	- path
+*	- fileName
+*	- token
+*
+***/
+app.post('/delete', function(req, response){
+	//TODO get userId with token
+
+   	var userId = 1;
+	var path = req.body.path;
+	if(req.body.path.length === 0)
+		path = '/';
+	var fileName = req.body.fileName;
+	if(fs.existsSync("/iscsi/" + userId + path + fileName) && fs.lstatSync("/iscsi/" + userId + path + fileName).isFile())
+		    			fs.unlinkSync("/iscsi/" + userId + path + fileName);
+	if(fs.existsSync("/iscsi/" + userId + path + fileName) && fs.lstatSync("/iscsi/" + userId + path + fileName).isDirectory())
+					deleteFolderRecursive("/iscsi/" + userId + path + fileName);
+	response.setHeader('Access-Control-Allow-Origin', '*');
+	response.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
 	response.end('{"result":"success"}');
 });
 
@@ -190,10 +258,9 @@ app.post('/list', function(req, response){
    }
 
    response.setHeader('Access-Control-Allow-Origin', '*');
-
    response.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
    response.end(JSON.stringify(jsonResponse).toString('utf8'));
    
 });
 
-//TODO upload,download , move, copy, delete
+//TODO upload,download , move, copy
