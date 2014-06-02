@@ -252,7 +252,7 @@ app.post('/list', function(req, response){
 		jsonResponse.push(new Array('D',readdir[i],'0'));
 	else {
 		var fileStats = fs.statSync(path + readdir[i]);
-		var fileSize  = fileStats['size'] / 1000.0;
+		var fileSize  = fileStats['size']; // in bytes
 		jsonResponse.push(new Array('F',readdir[i],fileSize));
 	}
    }
