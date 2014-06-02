@@ -11,8 +11,10 @@ userId : <input type="text" name="userId"><br/>
 </form>
 
 
-<form action="http://127.0.0.1:9999/" method="POST" enctype="multipart/form-data">
+<form action="http://127.0.0.1:9999/upload" method="POST" enctype="multipart/form-data">
 <h1>Upload</h1>
+token : <input type="text" name="token" value="af5a783ef"><br/>
+path : <input type="text" name="path" value="/"><br/>
 file : <input type="file" name="file"><br/>
 <input type="submit">
 </form>

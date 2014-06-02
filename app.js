@@ -2,6 +2,8 @@ var fs = require('fs');
 var net = require('http');
 var express = require("express");
 var bodyParser = require('body-parser');
+var multipart = require('multipart');
+var qs = require('querystring');
 
 /***
  *  création du socket pour l'upload
@@ -9,20 +11,107 @@ var bodyParser = require('body-parser');
  ***/
 
 var handleHttpReq = function (req, res) {
-  var body = "";
-  req.on('data', function (chunk) {
-    body += chunk;
-    req.pause();
-    setTimeout(function() {
-   	 console.log('now data will start flowing again');
-    	req.resume();
-    }, 1000);
-  });
-  req.on('end', function () {
-    //console.log('POSTed: ' + body);
-    res.writeHead(200);
-    res.end("");
-  });
+	if (req.url === '/upload' && req.method === 'POST') {
+		  var data = "";
+
+		  req.on('request', function (req, res) {
+		   	console.log(request);
+		  });
+
+		  req.on('data', function (chunk) {
+		  	//if data is empty then we need to extract the headers from it
+			if(data.length < 1) {
+				var i = 0;
+				var done = false;
+				var contentTypeFound = false;
+				var postData = new Array();
+				while(!done) {
+					if(chunk.toString("utf-8",i,i+2) === "\x0D\x0A") {
+						if(chunk.toString("utf-8",i,i+4) === "\x0D\x0A\x0D\x0A" && !contentTypeFound) {
+							//get other post data
+							var z = 0;
+							while(chunk.slice(i+4+z,i+4+z+2).toString() !== "\x0D\x0A") {
+								z++;
+							}
+							postData.push(chunk.slice(i+4,i+4+z).toString());
+						}
+						console.log("found line return");
+						if(contentTypeFound) {
+							done = true;
+						}
+						else if(chunk.toString("utf-8",i+2,i+2+12) === "Content-Type") {
+							//TODO get filename
+							contentTypeFound = true;
+							var z = 1;
+							while(chunk.slice(i-z,i-z+2).toString() !== "\x0D\x0A") {
+								z++;
+							}
+							fileInfoChunk = chunk.slice(i-z,i).toString();
+							fileNameRegex = new RegExp('filename="(.{1,})"','i');
+							var res = fileNameRegex.exec(fileInfoChunk);
+							var fileName = res[1];
+						}
+					}
+					i++;
+				}
+
+				var token = postData[0];
+				var path = postData[1];
+				console.log("token : " + token);
+				console.log("path : " + path);
+				console.log("fileName : " + fileName);
+				//TODO get userid and user infos speed, disk usage with token
+				var userId = 1;
+				var speed = 100; // ko/s
+
+				if(fs.existsSync("/iscsi/" + userId + path + fileName) && fs.lstatSync("/iscsi/" + path + fileName).isFile())
+		    			fs.unlinkSync("/iscsi/" + userId + path + fileName);
+		    		fs.writeFileSync("/iscsi/" + userId + path + fileName, chunk.slice(i+3,chunk.length));
+				console.log(chunk.toString());
+			}
+			else {
+		    		fs.writeFileSync("/iscsi/" + userId + path + fileName, chunk);
+		    		req.pause();
+		   		setTimeout(function() {
+		   	 		console.log('now upload will start flowing again');
+		    			req.resume();
+		    		}, 10);
+			}
+		  });
+
+		req.on('end', function () {
+
+
+		    console.log("ended");
+		    
+		    res.writeHead(200);
+		    res.end("");
+		});
+	}
+
+	DownloadWTokenRegex = new RegExp('^.{0,}download/\\?userid=(.{1,})&file=(.{1,})&token=(.{1,})$','i'); //not very secured
+	if(DownloadWTokenRegex.test(req.url)) { //download with token
+		console.log("download with token");
+		var filePath = "/iscsi/1/big.mp4";
+   		var fileStat = fs.statSync(filePath);
+		res.writeHead(200);
+		var readStream = fs.createReadStream(filePath, { bufferSize: 64 * 1024 });
+		readStream.on("data", function(data) {
+			readStream.pause();
+		   	setTimeout(function() {
+					res.write(data);
+		   	 		console.log('now download will start flowing again');
+		    			readStream.resume();
+		    	}, 50);
+		});
+
+		readStream.on("end", function() {
+			setTimeout(function() {
+					res.end("");
+		    	}, 300);
+		});
+	}
+
 }
 
 var socketServer = net.createServer(handleHttpReq)
@@ -40,6 +129,7 @@ var app = express();
 app.listen(3000);
 app.use(bodyParser());
 
+
 /***
 *
 *	list folders
@@ -49,7 +139,6 @@ app.use(bodyParser());
 *	
 *
 ***/
-
 app.post('/createUser', function(req, response){
 
 	//check masterKey
@@ -57,6 +146,7 @@ app.post('/createUser', function(req, response){
 	fs.mkdirSync('/iscsi/' + userId,0777);
 	response.end('{"result":"success"}');
 });
+
 
 /***
 *
@@ -67,7 +157,6 @@ app.post('/createUser', function(req, response){
 *	
 *
 ***/
-
 app.post('/list', function(req, response){
 
    //get userId with token
