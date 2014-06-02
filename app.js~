@@ -2,7 +2,6 @@ var fs = require('fs');
 var net = require('http');
 var express = require("express");
 var bodyParser = require('body-parser');
-var sleep = require('sleep');
 
 /***
  *  création du socket pour l'upload
