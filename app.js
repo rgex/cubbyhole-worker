@@ -8,6 +8,24 @@ var pathHelper = require('path');
 var urlHelper = require('url');
 
 /***
+ * Calculate to wait between 2 chucks to reach a certain download speed.
+ *
+ * @param wantedSpeed in bytes/second
+ * @param chunckSize in bytes
+ * @param timeTaken in miliseconds
+ */
+var calculatePause = function(wantedSpeed, chunckSize, timeTaken) {
+    var expectedTimeTaken = Math.floor((chunckSize / (wantedSpeed + wantedSpeed*0.1)) * 1000);
+    if(expectedTimeTaken) {
+        return expectedTimeTaken;
+    }
+    else {
+        return 0;
+    }
+}
+
+
+/***
  *  création du socket pour l'upload
  *
  ***/
@@ -77,20 +95,25 @@ console.log("got req :");
 				if(fs.existsSync("/iscsi/" + userId + path + fileName) && fs.lstatSync("/iscsi/" + userId + path + fileName).isFile())
 		    			fs.unlinkSync("/iscsi/" + userId + path + fileName);
 				fd = fs.openSync("/iscsi/" + userId + path + fileName,'a');
-		    		var nbrOfWritenBytes = fs.writeSync(fd, chunk.slice(i+3,chunk.length), 0, (chunk.length - (i+3)), 0);
-				//console.log(chunk.toString());
 				console.log("state 1");
 			}
 			else {
 				console.log("state 2");
-				//console.log(chunk.toString());
-		    		nbrOfWritenBytes += fs.writeSync(fd, chunk, 0, chunk.length, nbrOfWritenBytes);
-		    		req.pause();
+		    	req.pause();
+
+                if(typeof lastChunckSize !== 'undefined' && typeof lastChunckTimeStamp !== 'undefined') {
+                    var sleepTime = calculatePause(100000, lastChunckSize, new Date().getTime() - lastChunckTimeStamp); //wanted speed 100kB = 100000 B
+                }
+                else {
+                    var sleepTime = 0;
+                }
 		   		setTimeout(function() {
 		   	 		console.log('now upload will start flowing again');
 		    			req.resume();
-		    		}, 10);
+		    		}, sleepTime);
 			}
+            lastChunckSize      = chunk.length;
+            lastChunckTimeStamp = new Date().getTime();
 		  });
 
 		req.on('end', function () {
@@ -105,7 +128,6 @@ console.log("got req :");
 	DownloadWTokenRegex = new RegExp('^.{0,}download/\\?userid=(.{1,})&file=(.{1,})&token=(.{1,})$','i'); //not very secured
 	if(DownloadWTokenRegex.test(req.url)) { //download with token
 		console.log("download with token");
-		var resRegex = DownloadWTokenRegex.exec(req.url);
 		var urlParts = urlHelper.parse(req.url, true);
 		console.log(urlParts);
 		var filePath = '/iscsi/' + urlParts.query.userid + urlParts.query.file;
@@ -115,11 +137,19 @@ console.log("got req :");
 		var readStream = fs.createReadStream(filePath, { bufferSize: 64 * 1024 });
 		readStream.on("data", function(data) {
 			readStream.pause();
+            if(typeof lastChunckSize !== 'undefined' && typeof lastChunckTimeStamp !== 'undefined') {
+                var sleepTime = calculatePause(100000, lastChunckSize, new Date().getTime() - lastChunckTimeStamp); //wanted speed 100kB = 100000 B
+            }
+            else {
+                var sleepTime = 0;
+            }
 		   	setTimeout(function() {
 					res.write(data);
 		   	 		console.log('now download will start flowing again');
 		    			readStream.resume();
-		    	}, 100);
+		    	}, sleepTime);
+            lastChunckSize      = data.length;
+            lastChunckTimeStamp = new Date().getTime();
 		});
 
 		readStream.on("end", function() {
