@@ -13,7 +13,13 @@ var urlHelper = require('url');
  ***/
 
 var handleHttpReq = function (req, res) {
-	if (req.url === '/upload' && req.method === 'POST') {
+console.log("got req :");
+	if (req.url === '/upload' /*&& req.method === 'POST'*/) {
+
+		 res.writeHead(200,{"Content-Type": "text/plain",
+			            "Access-Control-Allow-Origin":"*"
+		 });
+
 		  var firstChunk = true;
 
 		  req.on('request', function (req, res) {
@@ -91,8 +97,6 @@ var handleHttpReq = function (req, res) {
 
 		    setTimeout(function() {
 			    console.log("ended");
-			    
-			    res.writeHead(200);
 			    res.end("");
 		    },300);
 		});
