@@ -1,7 +1,18 @@
 .content {
-	width: 750px;
+	width: 810px;
 	margin-left:auto;
 	margin-right:auto;
+}
+
+.fileExplorer .element {
+	margin-bottom: 2px;
+}
+
+.fileExplorer .element .public {
+        display: block;
+        width : 30px;
+        max-width : 30px;
+        float: left;
 }
 
 .fileExplorer .element .type {

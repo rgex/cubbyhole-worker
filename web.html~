@@ -1,6 +1,15 @@
 <html>
     <link rel="stylesheet" href="css/webapp.css">
     <link rel="stylesheet" href="css/bootstrap.min.css">
+
+<script>
+  currentPath = new Array(); //stack like
+  token = 'abc';
+  userId = 1;
+  wsUrl = 'http://127.0.0.1:3000/';
+  downloadUrl = 'http://127.0.0.1:9999/';
+</script>
+
     <script src="js/jquery.js"></script>
     <script src="js/jquery.form.js"></script>
     <script src="js/webapp.js"></script>
