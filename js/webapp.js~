@@ -59,12 +59,22 @@ function displayPath(json,newPath) {
 $('.fileExplorer').html('');
 	    
 for(i in json) {
-	if(json[i][0] == 'D') { //directory
+	if(json[i][3] === 'priv')
+		var publicStatus = '<span class="public">&nbsp;</span>';
+	else
+		var publicStatus = '<span class="public"><img src="img/public.png"></span>';
+
+	if(json[i][3] === 'priv')
+		var publicStatusAction = '<span class="public"><a href="#" title="Rendre publique" onclick="makePublic(\'' + json[i][1] + '\');"><img src="img/public.png"></a></span>';
+	else
+		var publicStatusAction = '<span class="public"><a href="#" title="Rendre privé" onclick="makePrivate(\'' + json[i][1] + '\');"><img src="img/private.png"></a></span>';
+
+	if(json[i][0] === 'D') { //directory
         	$('.fileExplorer').append('<div class="element element-' + i%2 + '">'+
-					  '<span class="public"><img src="img/public.png"></span>' +
+					  publicStatus +
                                           '<span class="type"><img src="img/folder.gif"></span>' +
 					  '<span class="name"><a href="#" onclick="listPath(\'' + json[i][1] + '\'); return false;">' + json[i][1] + '</a></span>' +
-					  '<span class="public"><a href="#" title="Rendre publique" onclick="makePublic(\'' + json[i][1] + '\');"><img src="img/public.png"></a></span>' +
+					  publicStatusAction +
 					  '<span class="delete"><a href="#" title="Supprimer" onclick="deleteElement(\'' + json[i][1] + '\');"><img src="img/delete.png"></a></span>' +
 					  '<span class="download"></span>' +
  			                  '&nbsp;</div>' +
@@ -77,10 +87,10 @@ for(i in json) {
 		if(json[i][2] <= 1000*1000*1000 && json[i][2] > 1000*1000) //si inférieur au giga
 			size = Math.ceil(json[i][2]/100000)/10 + ' Mo';
                 $('.fileExplorer').append('<div class="element element-' + i%2 + '">'+
-					  '<span class="public"><img src="img/public.png"></span>' +
+					  publicStatus +
                                           '<span class="type"><img src="img/file.png"></span>' +
                                           '<span class="name">' + json[i][1] + '</span>' +
-					  '<span class="public"><a href="#" title="Rendre publique" onclick="makePublic(\'' + json[i][1] + '\');"><img src="img/public.png"></a></span>' +
+					  publicStatusAction +
 					  '<span class="delete"><a href="#" title="Supprimer" onclick="deleteElement(\'' + json[i][1] + '\');"><img src="img/delete.png"></a></span>' +
 					  '<span class="download"><a href="#" title="Télécharger" onclick="downloadFile(\'' + json[i][1] + '\'); return false;"><img src="img/download.png"></a></span>' +
 					  '<span class="size">' + size + '</span>' +
@@ -94,19 +104,45 @@ for(i in json) {
         
 function createFolder() {
 	var folderName = prompt("Please enter the folder name");
-	$.ajax({
-		type: "POST",
-		url: wsUrl + 'createFolder',
-		data: 'path=' + pathToString(currentPath) + '&folderName=' + folderName + '&token=' + token,
-		success: function(data){
-			getPathListFromWS(currentPath);
-		},
-		dataType: 'json'
-	});
+	if(folderName.length !== 0) {
+		$.ajax({
+			type: "POST",
+			url: wsUrl + 'createFolder',
+			data: 'path=' + pathToString(currentPath) + '&folderName=' + folderName + '&token=' + token,
+			success: function(data){
+				getPathListFromWS(currentPath);
+			},
+			dataType: 'json'
+		});
+	}
 }
 
 function makePublic(element) {
+	if(confirm('Voulez vous vraiment rendre cet élément publique?')) {
+		$.ajax({
+			type: "POST",
+			url: wsUrl + 'makePublic',
+			data: 'path=' + pathToString(currentPath) + '&fileName=' + element + '&token=' + token,
+			success: function(data){
+			    getPathListFromWS(currentPath);
+			},
+			dataType: 'json'
+		});
+	}
+}
 
+function makePrivate(element) {
+	if(confirm('Voulez vous vraiment rendre cet élément privé')) {
+		$.ajax({
+			type: "POST",
+			url: wsUrl + 'makePrivate',
+			data: 'path=' + pathToString(currentPath) + '&fileName=' + element + '&token=' + token,
+			success: function(data){
+			    getPathListFromWS(currentPath);
+			},
+			dataType: 'json'
+		});
+	}
 }
 
 function deleteElement(element) {
@@ -114,7 +150,7 @@ function deleteElement(element) {
 		$.ajax({
 			type: "POST",
 			url: wsUrl + 'delete',
-			data: 'path=' + pathToString(currentPath) + '&fileName=' + element + '&token=' + token,
+			data: 'path=' + pathToString(currentPath) + '&fileName=' + element + '&userId=' + userId + '&token=' + token,
 			success: function(data){
 			    getPathListFromWS(currentPath);
 			},

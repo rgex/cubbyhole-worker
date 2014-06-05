@@ -12,6 +12,7 @@
         display: block;
         width : 30px;
         max-width : 30px;
+	min-width : 30px;
         float: left;
 }
 

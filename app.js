@@ -258,6 +258,85 @@ app.post('/delete', function(req, response){
 
 
 /***
+ *
+ *	make a file or a folder become public
+ *	@require
+ *	- path
+ *	- fileName
+ *	- token
+ *
+ ***/
+app.post('/makePublic', function(req, response){
+    //TODO get userId with token
+
+    var userId = 1;
+    var path = req.body.path;
+    if(req.body.path.length === 0)
+        path = '/';
+    var fileName = req.body.fileName;
+    if(fs.existsSync("/iscsi/" + userId + path + fileName)) {
+        if(fs.existsSync("/iscsi/" + userId + path + ".publicFiles.json")) {
+            var publicFilesJson = fs.readFileSync("/iscsi/" + userId + path + ".publicFiles.json", "utf8");
+            var publicFiles = JSON.parse(publicFilesJson);
+            var found = false;
+            for(var i in publicFiles) {
+                if(publicFiles[i] === fileName)
+                    found = true;
+            }
+            if(!found)
+                publicFiles.push(fileName);
+            fs.unlinkSync("/iscsi/" + userId + path + ".publicFiles.json");
+        }
+        else {
+            var publicFiles = new Array();
+            publicFiles.push(fileName);
+        }
+        fs.writeFileSync("/iscsi/" + userId + path + ".publicFiles.json", JSON.stringify(publicFiles));
+    }
+    response.setHeader('Access-Control-Allow-Origin', '*');
+    response.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
+    response.end('{"result":"success"}');
+});
+
+
+/***
+ *
+ *	make a file or a folder become private
+ *	@require
+ *	- path
+ *	- fileName
+ *	- token
+ *
+ ***/
+app.post('/makePrivate', function(req, response){
+    //TODO get userId with token
+
+    var userId = 1;
+    var path = req.body.path;
+    if(req.body.path.length === 0)
+        path = '/';
+    var fileName = req.body.fileName;
+    if(fs.existsSync("/iscsi/" + userId + path + fileName)) {
+        if(fs.existsSync("/iscsi/" + userId + path + ".publicFiles.json")) {
+            var publicFilesJson = fs.readFileSync("/iscsi/" + userId + path + ".publicFiles.json", "utf8");
+            var publicFiles = JSON.parse(publicFilesJson);
+            var found = false;
+            for(var i in publicFiles) {
+                if(publicFiles[i] === fileName){
+                    publicFiles.splice(i,1);
+                    continue;
+                }
+            }
+            fs.unlinkSync("/iscsi/" + userId + path + ".publicFiles.json");
+        }
+        fs.writeFileSync("/iscsi/" + userId + path + ".publicFiles.json", JSON.stringify(publicFiles));
+    }
+    response.setHeader('Access-Control-Allow-Origin', '*');
+    response.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
+    response.end('{"result":"success"}');
+});
+
+/***
 *
 *	list folders
 *	@require 
@@ -278,18 +357,32 @@ app.post('/list', function(req, response){
 	path = req.body.path;
    var path = '/iscsi/' + userId + path;
 
-   var readdir = fs.readdirSync(path);
-   var jsonResponse = new Array();
-   for(var i in readdir)
-   {
-	if(fs.lstatSync(path + readdir[i]).isDirectory())
-		jsonResponse.push(new Array('D',readdir[i],'0'));
-	else {
-		var fileStats = fs.statSync(path + readdir[i]);
-		var fileSize  = fileStats['size']; // in bytes
-		jsonResponse.push(new Array('F',readdir[i],fileSize));
-	}
-   }
+    var publicFiles = new Array();
+    if(fs.existsSync(path + ".publicFiles.json")) {
+       var publicFilesJson = fs.readFileSync(path + ".publicFiles.json", "utf8");
+       var publicFiles = JSON.parse(publicFilesJson);
+    }
+    var readdir = fs.readdirSync(path);
+    var jsonResponse = new Array();
+    for(var i in readdir)
+    {
+        var publicStatus = "priv";
+        for(var z in publicFiles) {
+            if(publicFiles[z] === readdir[i])
+                publicStatus = "pub";
+        }
+
+        if(readdir[i] !== ".publicFiles.json") {
+            if(fs.lstatSync(path + readdir[i]).isDirectory()) {
+                jsonResponse.push(new Array('D',readdir[i],'0',publicStatus));
+            }
+            else {
+                var fileStats = fs.statSync(path + readdir[i]);
+                var fileSize  = fileStats['size']; // in bytes
+                jsonResponse.push(new Array('F',readdir[i],fileSize,publicStatus));
+            }
+        }
+    }
 
    response.setHeader('Access-Control-Allow-Origin', '*');
    response.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
