@@ -19,10 +19,14 @@ function gotoFolderInPath(i) {
 }
 
 function getPathListFromWS(path) {
+	if(typeof token !== 'undefined')
+		var listUrl = 'path=' + pathToString(path) + '&token=' + token;
+	else
+		var listUrl = 'path=' + pathToString(path) + '&userId=' + userId;
         $.ajax({
                 type: "POST",
                 url: wsUrl + 'list',
-                data: 'path=' + pathToString(path) + '&token=' + token,
+                data: listUrl,
                 success: function(data){
                     displayPath(data,path);
                 },

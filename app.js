@@ -372,8 +372,18 @@ app.post('/list', function(req, response){
 
    console.log("getUserInformationsWithToken : ");
    console.log(getUserInformationsWithToken(req.body.token));
-
-   var userId = 1;
+   var userInfos = new Array();
+   if(typeof req.body.token !== 'undefined')
+        userInfos = getUserInformationsWithToken(req.body.token);
+   var showPrivate = false;
+   if(typeof userInfos['id'] !== 'undefined') {
+       var userId = userInfos['id'];
+       showPrivate = true
+   }
+   else {
+       var userId = req.body.userId;
+       showPrivate = false;
+   }
    var path = '/';
 
    if(typeof req.body !== 'undefined'
@@ -399,12 +409,14 @@ app.post('/list', function(req, response){
 
         if(readdir[i] !== ".publicFiles.json") {
             if(fs.lstatSync(path + readdir[i]).isDirectory()) {
-                jsonResponse.push(new Array('D',readdir[i],'0',publicStatus));
+                if(publicStatus === "pub" || showPrivate)
+                    jsonResponse.push(new Array('D',readdir[i],'0',publicStatus));
             }
             else {
                 var fileStats = fs.statSync(path + readdir[i]);
                 var fileSize  = fileStats['size']; // in bytes
-                jsonResponse.push(new Array('F',readdir[i],fileSize,publicStatus));
+                if(publicStatus === "pub" || showPrivate)
+                    jsonResponse.push(new Array('F',readdir[i],fileSize,publicStatus));
             }
         }
     }
