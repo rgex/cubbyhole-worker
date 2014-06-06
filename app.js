@@ -3,9 +3,30 @@ var net = require('http');
 var express = require("express");
 var bodyParser = require('body-parser');
 var multipart = require('multipart');
-var qs = require('querystring');
+var httpsync = require('httpsync');
 var pathHelper = require('path');
 var urlHelper = require('url');
+var async = require('async');
+var querystring = require('querystring');
+
+webserviceHost = '127.0.0.1';
+webservicePort = '80';
+webservicePath = '/fakews/';
+
+var getUserInformationsWithToken = function(token) {
+
+    var post_data = querystring.stringify({
+        'token' : token
+    });
+
+    var req = httpsync.request({
+        url: "http://" + webserviceHost + webservicePath + "?action=getUserIdWithToken",
+        method: "POST"
+    });
+    req.write(post_data);
+    var resJson = req.end();
+    return JSON.parse(resJson['data']);
+}
 
 /***
  * Calculate to wait between 2 chucks to reach a certain download speed.
@@ -348,6 +369,10 @@ app.post('/makePrivate', function(req, response){
 app.post('/list', function(req, response){
 
    //get userId with token
+
+   console.log("getUserInformationsWithToken : ");
+   console.log(getUserInformationsWithToken(req.body.token));
+
    var userId = 1;
    var path = '/';
 
