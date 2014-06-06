@@ -28,6 +28,149 @@ var getUserInformationsWithToken = function(token) {
     return JSON.parse(resJson['data']);
 }
 
+var handleDownload = function(req, res) {
+    console.log("download with token");
+    var urlParts = urlHelper.parse(req.url, true);
+    var lastChunckSize = null;
+    var lastChunckTimeStamp = null;
+
+    console.log(urlParts);
+    var downloadSpeed = 100000; //default download speed if user isn't logged in is equal to 100kB/S
+    if(typeof urlParts.query.token !== 'undefined') {
+        var userInfos = getUserInformationsWithToken(urlParts.query.token);
+        downloadSpeed = userInfos['downloadSpeed'];
+    }
+    var filePath = '/iscsi/' + urlParts.query.userid + urlParts.query.file;
+    var fileStat = fs.lstatSync(filePath);
+    res.writeHead(200, { 'Content-Type': 'application/force-download', 'Content-Length': fileStat.size, 'Content-disposition' : 'attachment; filename=' + pathHelper.basename(filePath) });
+    var readStream = fs.createReadStream(filePath, { bufferSize: 64 * 1024 });
+    readStream.on("data", function(data) {
+        readStream.pause();
+        if(typeof lastChunckSize !== null && typeof lastChunckTimeStamp !== null) {
+            var sleepTime = calculatePause(downloadSpeed, lastChunckSize, new Date().getTime() - lastChunckTimeStamp); //wanted speed 100kB = 100000 B
+        }
+        else {
+            var sleepTime = 0;
+        }
+        setTimeout(function() {
+            res.write(data);
+            console.log('now download will start flowing again');
+            readStream.resume();
+        }, sleepTime);
+        lastChunckSize      = data.length;
+        lastChunckTimeStamp = new Date().getTime();
+    });
+
+    readStream.on("end", function() {
+        console.log("download done");
+        setTimeout(function() {
+            res.end("");
+        }, 500);
+    });
+
+    req.on("end", function() {
+        console.log("download stopped");
+    });
+}
+
+var handleUpload = function(fReq, fRes) {
+    var req = fReq;
+    var res = fRes;
+    var uploadSpeed = 100000;
+    var lastChunckSize      = null;
+    var lastChunckTimeStamp = null;
+    var nbrOfWritenBytes    = 0;
+    var fileInfoChunk = null;
+    var fileNameRegex = null;
+
+    res.writeHead(200,{"Content-Type": "text/plain",
+        "Access-Control-Allow-Origin":"*"
+    });
+
+    var firstChunk = true;
+
+    req.on('data', function (chunk) {
+        //if data is empty then we need to extract the headers from it
+        if(firstChunk) {
+            var i = 0;
+            var done = false;
+            var contentTypeFound = false;
+            var postData = new Array();
+            firstChunk = false;
+            while(!done) {
+                if(chunk.toString("utf-8",i,i+2) === "\x0D\x0A") {
+                    if(chunk.toString("utf-8",i,i+4) === "\x0D\x0A\x0D\x0A" && !contentTypeFound) {
+                        //get other post data
+                        var z = 0;
+                        while(chunk.slice(i+4+z,i+4+z+2).toString() !== "\x0D\x0A") {
+                            z++;
+                        }
+                        postData.push(chunk.slice(i+4,i+4+z).toString());
+                    }
+                    console.log("found line return");
+                    if(contentTypeFound) {
+                        done = true;
+                    }
+                    else if(chunk.toString("utf-8",i+2,i+2+12) === "Content-Type") {
+                        //TODO get filename
+                        contentTypeFound = true;
+                        var z = 1;
+                        while(chunk.slice(i-z,i-z+2).toString() !== "\x0D\x0A") {
+                            z++;
+                        }
+                        fileInfoChunk = chunk.slice(i-z,i).toString();
+                        fileNameRegex = new RegExp('filename="(.{1,})"','i');
+                        var res = fileNameRegex.exec(fileInfoChunk);
+                        var fileName = res[1];
+                    }
+                }
+                i++;
+            }
+
+            var token = postData[0];
+            var path = postData[1];
+
+            console.log("token : " + token);
+            console.log("path : " + path);
+            console.log("fileName : " + fileName);
+            //TODO get userid and user infos speed, disk usage with token
+            var userInfos = getUserInformationsWithToken(token);
+            var userId = userInfos['id'];
+            uploadSpeed = userInfos['uploadSpeed']; // Bytes/S
+
+            if(fs.existsSync("/iscsi/" + userId + path + fileName) && fs.lstatSync("/iscsi/" + userId + path + fileName).isFile())
+                fs.unlinkSync("/iscsi/" + userId + path + fileName);
+            fd = fs.openSync("/iscsi/" + userId + path + fileName,'a');
+            nbrOfWritenBytes = fs.writeSync(fd, chunk.slice(i+3,chunk.length), 0, (chunk.length - (i+3)), 0);
+            console.log("state 1");
+        }
+        else {
+            console.log("state 2");
+            nbrOfWritenBytes += fs.writeSync(fd, chunk, 0, chunk.length, nbrOfWritenBytes);
+            req.pause();
+            if(typeof lastChunckSize !== null && typeof lastChunckTimeStamp !== null) {
+                var sleepTime = calculatePause(uploadSpeed, lastChunckSize, new Date().getTime() - lastChunckTimeStamp); //wanted speed 100kB = 100000 B
+            }
+            else {
+                var sleepTime = 0;
+            }
+            setTimeout(function() {
+                console.log('now upload will start flowing again');
+                req.resume();
+            }, sleepTime);
+        }
+        lastChunckSize      = chunk.length;
+        lastChunckTimeStamp = new Date().getTime();
+    });
+
+    req.on('end', function () {
+        //fs.close(fd);
+        setTimeout(function() {
+            console.log("ended");
+            res.end("");
+        },500);
+    });
+}
 /***
  * Calculate to wait between 2 chucks to reach a certain download speed.
  *
@@ -54,137 +197,19 @@ var calculatePause = function(wantedSpeed, chunckSize, timeTaken) {
 var handleHttpReq = function (req, res) {
 console.log("got req :");
 	if (req.url === '/upload' /*&& req.method === 'POST'*/) {
-
-		 res.writeHead(200,{"Content-Type": "text/plain",
-			            "Access-Control-Allow-Origin":"*"
-		 });
-
-		  var firstChunk = true;
-
-		  req.on('request', function (req, res) {
-		   	console.log(request);
-		  });
-
-		  req.on('data', function (chunk) {
-		  	//if data is empty then we need to extract the headers from it
-			if(firstChunk) {
-				var i = 0;
-				var done = false;
-				var contentTypeFound = false;
-				var postData = new Array();
-				firstChunk = false;
-				while(!done) {
-					if(chunk.toString("utf-8",i,i+2) === "\x0D\x0A") {
-						if(chunk.toString("utf-8",i,i+4) === "\x0D\x0A\x0D\x0A" && !contentTypeFound) {
-							//get other post data
-							var z = 0;
-							while(chunk.slice(i+4+z,i+4+z+2).toString() !== "\x0D\x0A") {
-								z++;
-							}
-							postData.push(chunk.slice(i+4,i+4+z).toString());
-						}
-						console.log("found line return");
-						if(contentTypeFound) {
-							done = true;
-						}
-						else if(chunk.toString("utf-8",i+2,i+2+12) === "Content-Type") {
-							//TODO get filename
-							contentTypeFound = true;
-							var z = 1;
-							while(chunk.slice(i-z,i-z+2).toString() !== "\x0D\x0A") {
-								z++;
-							}
-							fileInfoChunk = chunk.slice(i-z,i).toString();
-							fileNameRegex = new RegExp('filename="(.{1,})"','i');
-							var res = fileNameRegex.exec(fileInfoChunk);
-							var fileName = res[1];
-						}
-					}
-					i++;
-				}
-
-				var token = postData[0];
-				var path = postData[1];
-
-				console.log("token : " + token);
-				console.log("path : " + path);
-				console.log("fileName : " + fileName);
-				//TODO get userid and user infos speed, disk usage with token
-				var userId = 1;
-				var speed = 100; // ko/s
-
-				if(fs.existsSync("/iscsi/" + userId + path + fileName) && fs.lstatSync("/iscsi/" + userId + path + fileName).isFile())
-		    			fs.unlinkSync("/iscsi/" + userId + path + fileName);
-				fd = fs.openSync("/iscsi/" + userId + path + fileName,'a');
-				console.log("state 1");
-			}
-			else {
-				console.log("state 2");
-		    	req.pause();
-
-                if(typeof lastChunckSize !== 'undefined' && typeof lastChunckTimeStamp !== 'undefined') {
-                    var sleepTime = calculatePause(100000, lastChunckSize, new Date().getTime() - lastChunckTimeStamp); //wanted speed 100kB = 100000 B
-                }
-                else {
-                    var sleepTime = 0;
-                }
-		   		setTimeout(function() {
-		   	 		console.log('now upload will start flowing again');
-		    			req.resume();
-		    		}, sleepTime);
-			}
-            lastChunckSize      = chunk.length;
-            lastChunckTimeStamp = new Date().getTime();
-		  });
-
-		req.on('end', function () {
-
-		    setTimeout(function() {
-			    console.log("ended");
-			    res.end("");
-		    },300);
-		});
+        setTimeout(function() {
+            handleUpload(req, res);
+        },1);
 	}
 
 	DownloadWTokenRegex = new RegExp('^.{0,}download/\\?userid=(.{1,})&file=(.{1,})&token=(.{1,})$','i'); //not very secured
 	if(DownloadWTokenRegex.test(req.url)) { //download with token
-		console.log("download with token");
-		var urlParts = urlHelper.parse(req.url, true);
-		console.log(urlParts);
-		var filePath = '/iscsi/' + urlParts.query.userid + urlParts.query.file;
-   		var fileStat = fs.lstatSync(filePath);
-		//res.writeHead(200);
-		res.writeHead(200, { 'Content-Type': 'application/force-download', 'Content-Length': fileStat.size, 'Content-disposition' : 'attachment; filename=' + pathHelper.basename(filePath) });
-		var readStream = fs.createReadStream(filePath, { bufferSize: 64 * 1024 });
-		readStream.on("data", function(data) {
-			readStream.pause();
-            if(typeof lastChunckSize !== 'undefined' && typeof lastChunckTimeStamp !== 'undefined') {
-                var sleepTime = calculatePause(100000, lastChunckSize, new Date().getTime() - lastChunckTimeStamp); //wanted speed 100kB = 100000 B
-            }
-            else {
-                var sleepTime = 0;
-            }
-		   	setTimeout(function() {
-					res.write(data);
-		   	 		console.log('now download will start flowing again');
-		    			readStream.resume();
-		    	}, sleepTime);
-            lastChunckSize      = data.length;
-            lastChunckTimeStamp = new Date().getTime();
-		});
-
-		readStream.on("end", function() {
-			console.log("download done");
-			setTimeout(function() {
-					res.end("");
-		    	}, 500);
-		});
+        handleDownload(req, res);
 	}
 
 }
 
-var socketServer = net.createServer(handleHttpReq)
-.listen(9999, function(){
+net.createServer(handleHttpReq).listen(9999, function(){
         console.log('SOCKET SERVER Listening at: http://localhost:9999');
 });
 

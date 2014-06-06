@@ -5,8 +5,8 @@ switch($_GET['action']) {
 		if(!isset($_POST['token']))
 			die(json_encode(array("error" => "invalid token")));
 		echo json_encode(array("id" => 1,
-		       "downloadSpeed" => 1000,
-		       "uploadSpeed" => 1000,
+		       "downloadSpeed" => 100000,
+		       "uploadSpeed" => 100000,
 		       "maximalSpace" => 2000000000,
 		       "spaceUsed" => 99000000,
 			));
