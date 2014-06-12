@@ -1,0 +1,13 @@
+{ "dependencies" :
+  { "fs" : "*"
+  , "http" : "*"
+  , "express" : "*"
+  , "body-parser" : "*"
+  , "multipart" : "*"
+  , "httpsync" : "*"
+  , "httpsync" : "*"
+  , "path" : "*"
+  , "url" : "*"
+  , "querystring" : "*"
+  }
+}
