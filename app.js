@@ -258,8 +258,10 @@ app.post('/createUser', function(req, response){
 ***/
 app.post('/createFolder', function(req, response){
 
-	//TODO get userID
-   	var userId = 1;
+    var userInfos = getUserInformationsWithToken(req.body.token);
+    if(typeof userInfos['id'] === 'undefined')
+        response.end(''); //error
+    var userId = userInfos['id'];
 	fs.mkdirSync('/iscsi/' + userId + req.body.path + req.body.folderName,0777);
 	response.setHeader('Access-Control-Allow-Origin', '*');
 	response.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
@@ -290,9 +292,11 @@ var deleteFolderRecursive = function(path) {
 *
 ***/
 app.post('/delete', function(req, response){
-	//TODO get userId with token
 
-   	var userId = 1;
+    var userInfos = getUserInformationsWithToken(req.body.token);
+    if(typeof userInfos['id'] === 'undefined')
+        response.end(''); //error
+    var userId = userInfos['id'];
 	var path = req.body.path;
 	if(req.body.path.length === 0)
 		path = '/';
@@ -317,9 +321,11 @@ app.post('/delete', function(req, response){
  *
  ***/
 app.post('/makePublic', function(req, response){
-    //TODO get userId with token
 
-    var userId = 1;
+    var userInfos = getUserInformationsWithToken(req.body.token);
+    if(typeof userInfos['id'] === 'undefined')
+        response.end(''); //error
+    var userId = userInfos['id'];
     var path = req.body.path;
     if(req.body.path.length === 0)
         path = '/';
@@ -359,9 +365,11 @@ app.post('/makePublic', function(req, response){
  *
  ***/
 app.post('/makePrivate', function(req, response){
-    //TODO get userId with token
 
-    var userId = 1;
+    var userInfos = getUserInformationsWithToken(req.body.token);
+    if(typeof userInfos['id'] === 'undefined')
+        response.end(''); //error
+    var userId = userInfos['id'];
     var path = req.body.path;
     if(req.body.path.length === 0)
         path = '/';
@@ -455,5 +463,3 @@ app.post('/list', function(req, response){
    response.end(JSON.stringify(jsonResponse).toString('utf8'));
    
 });
-
-//TODO upload,download , move, copy
