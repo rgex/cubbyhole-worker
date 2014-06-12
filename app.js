@@ -76,27 +76,29 @@ var handleDownload = function(req, res) {
 var handleUpload = function(fReq, fRes) {
     var req = fReq;
     var res = fRes;
-    var uploadSpeed = 100000;
-    var lastChunckSize      = null;
-    var lastChunckTimeStamp = null;
-    var nbrOfWritenBytes    = 0;
+    req.uploadSpeed = 100000;
+    req.lastChunckSize      = null;
+    req.lastChunckTimeStamp = null;
+    req.nbrOfWritenBytes    = 0;
     var fileInfoChunk = null;
     var fileNameRegex = null;
+
+    req.reqIdentifier = Math.random();
 
     res.writeHead(200,{"Content-Type": "text/plain",
         "Access-Control-Allow-Origin":"*"
     });
 
-    var firstChunk = true;
+    req.firstChunk = true;
 
     req.on('data', function (chunk) {
         //if data is empty then we need to extract the headers from it
-        if(firstChunk) {
+        if(req.firstChunk) {
             var i = 0;
             var done = false;
             var contentTypeFound = false;
             var postData = new Array();
-            firstChunk = false;
+            req.firstChunk = false;
             while(!done) {
                 if(chunk.toString("utf-8",i,i+2) === "\x0D\x0A") {
                     if(chunk.toString("utf-8",i,i+4) === "\x0D\x0A\x0D\x0A" && !contentTypeFound) {
@@ -135,21 +137,23 @@ var handleUpload = function(fReq, fRes) {
             console.log("fileName : " + fileName);
             //TODO get userid and user infos speed, disk usage with token
             var userInfos = getUserInformationsWithToken(token);
-            var userId = userInfos['id'];
-            uploadSpeed = userInfos['uploadSpeed']; // Bytes/S
+            req.userId = userInfos['id'];
+            req.uploadSpeed = userInfos['uploadSpeed']; // Bytes/S
 
-            if(fs.existsSync("/iscsi/" + userId + path + fileName) && fs.lstatSync("/iscsi/" + userId + path + fileName).isFile())
-                fs.unlinkSync("/iscsi/" + userId + path + fileName);
-            fd = fs.openSync("/iscsi/" + userId + path + fileName,'a');
-            nbrOfWritenBytes = fs.writeSync(fd, chunk.slice(i+3,chunk.length), 0, (chunk.length - (i+3)), 0);
+            if(fs.existsSync("/iscsi/" + req.userId + path + fileName) && fs.lstatSync("/iscsi/" + req.userId + path + fileName).isFile())
+                fs.unlinkSync("/iscsi/" + req.userId + path + fileName);
+            req.fd = fs.openSync("/iscsi/" + req.userId + path + fileName,'a');
+            req.nbrOfWritenBytes = fs.writeSync(req.fd, chunk.slice(i+3,chunk.length), 0, (chunk.length - (i+3)), 0);
             console.log("state 1");
+	        console.log("req.reqIdentifier = " + req.reqIdentifier);
         }
         else {
             console.log("state 2");
-            nbrOfWritenBytes += fs.writeSync(fd, chunk, 0, chunk.length, nbrOfWritenBytes);
+	        console.log("req.reqIdentifier = " + req.reqIdentifier);
+            req.nbrOfWritenBytes += fs.writeSync(req.fd, chunk, 0, chunk.length, req.nbrOfWritenBytes);
             req.pause();
-            if(typeof lastChunckSize !== null && typeof lastChunckTimeStamp !== null) {
-                var sleepTime = calculatePause(uploadSpeed, lastChunckSize, new Date().getTime() - lastChunckTimeStamp); //wanted speed 100kB = 100000 B
+            if(typeof req.lastChunckSize !== null && typeof req.lastChunckTimeStamp !== null) {
+                var sleepTime = calculatePause(req.uploadSpeed, req.lastChunckSize, new Date().getTime() - req.lastChunckTimeStamp); //wanted speed 100kB = 100000 B
             }
             else {
                 var sleepTime = 0;
@@ -159,8 +163,8 @@ var handleUpload = function(fReq, fRes) {
                 req.resume();
             }, sleepTime);
         }
-        lastChunckSize      = chunk.length;
-        lastChunckTimeStamp = new Date().getTime();
+        req.lastChunckSize      = chunk.length;
+        req.lastChunckTimeStamp = new Date().getTime();
     });
 
     req.on('end', function () {
