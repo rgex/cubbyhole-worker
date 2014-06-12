@@ -9,5 +9,6 @@
   , "path" : "*"
   , "url" : "*"
   , "querystring" : "*"
+  , "async" : "*"
   }
 }
