@@ -9,9 +9,19 @@ var urlHelper = require('url');
 var async = require('async');
 var querystring = require('querystring');
 
-webserviceHost = '127.0.0.1';
-webservicePort = '80';
-webservicePath = '/fakews/';
+try {
+    var workerJSON = fs.readFileSync("worker.config", "utf8")
+    var workerConfig = JSON.parse(workerJSON);
+    console.log(workerConfig.webservicePath);
+    webserviceHost = workerConfig.webserviceHost;
+    webservicePort = workerConfig.webservicePort;
+    webservicePath = workerConfig.webservicePath;
+}
+catch (err){
+    console.log("something went wrong with the config.json file. Is this file existing?");
+    console.log(err);
+    process.abort();
+}
 
 var getUserInformationsWithToken = function(token) {
 
