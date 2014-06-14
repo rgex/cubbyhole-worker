@@ -37,9 +37,9 @@ var getUserInformationsWithToken = function(token) {
     var resJson = req.end();
     return JSON.parse(resJson['data']);
 }
-/*
-var updateUserStats = function(token,) {
 
+var updateUserStats = function(token,added,removed,addedFiles,removedFiles) {
+    /*
     var post_data = querystring.stringify({
         'token' : token
     });
@@ -51,8 +51,9 @@ var updateUserStats = function(token,) {
     req.write(post_data);
     var resJson = req.end();
     return JSON.parse(resJson['data']);
+     */
 }
-*/
+
 var handleDownload = function(req, res) {
     console.log("download with token");
     var urlParts = urlHelper.parse(req.url, true);
@@ -97,6 +98,9 @@ var handleDownload = function(req, res) {
         console.log("download stopped");
     });
 }
+var cleanUploadedFile = function (path,fileName){
+
+}
 
 var handleUpload = function(fReq, fRes) {
     var req = fReq;
@@ -105,6 +109,8 @@ var handleUpload = function(fReq, fRes) {
     req.lastChunckSize      = null;
     req.lastChunckTimeStamp = null;
     req.nbrOfWritenBytes    = 0;
+    req.nbrOfWritenBytes2   = 0;
+    req.userToken   = '';
     var fileInfoChunk = null;
     var fileNameRegex = null;
 
@@ -124,6 +130,7 @@ var handleUpload = function(fReq, fRes) {
             var contentTypeFound = false;
             var postData = new Array();
             req.firstChunk = false;
+            //console.log(chunk.toString());
             while(!done) {
                 if(chunk.toString("utf-8",i,i+2) === "\x0D\x0A") {
                     if(chunk.toString("utf-8",i,i+4) === "\x0D\x0A\x0D\x0A" && !contentTypeFound) {
@@ -154,14 +161,15 @@ var handleUpload = function(fReq, fRes) {
                 i++;
             }
 
-            var token = postData[0];
+            req.userToken  = postData[0];
             var path = postData[1];
 
-            console.log("token : " + token);
+            updateUserStats(req.userToken,0,0,1,0);
+            console.log("token : " + req.userToken );
             console.log("path : " + path);
             console.log("fileName : " + fileName);
             //TODO get userid and user infos speed, disk usage with token
-            var userInfos = getUserInformationsWithToken(token);
+            var userInfos = getUserInformationsWithToken(req.userToken );
             req.userId = userInfos['id'];
             req.uploadSpeed = userInfos['uploadSpeed']; // Bytes/S
 
@@ -169,13 +177,16 @@ var handleUpload = function(fReq, fRes) {
                 fs.unlinkSync("/iscsi/" + req.userId + path + fileName);
             req.fd = fs.openSync("/iscsi/" + req.userId + path + fileName,'a');
             req.nbrOfWritenBytes = fs.writeSync(req.fd, chunk.slice(i+3,chunk.length), 0, (chunk.length - (i+3)), 0);
+            req.nbrOfWritenBytes2 = req.nbrOfWritenBytes;
             console.log("state 1");
 	        console.log("req.reqIdentifier = " + req.reqIdentifier);
         }
         else {
             console.log("state 2");
 	        console.log("req.reqIdentifier = " + req.reqIdentifier);
-            req.nbrOfWritenBytes += fs.writeSync(req.fd, chunk, 0, chunk.length, req.nbrOfWritenBytes);
+            var writenBytes = fs.writeSync(req.fd, chunk, 0, chunk.length, req.nbrOfWritenBytes);
+            req.nbrOfWritenBytes += writenBytes;
+            req.nbrOfWritenBytes2 += writenBytes;
             req.pause();
             if(typeof req.lastChunckSize !== null && typeof req.lastChunckTimeStamp !== null) {
                 var sleepTime = calculatePause(req.uploadSpeed, req.lastChunckSize, new Date().getTime() - req.lastChunckTimeStamp); //wanted speed 100kB = 100000 B
@@ -190,6 +201,11 @@ var handleUpload = function(fReq, fRes) {
         }
         req.lastChunckSize      = chunk.length;
         req.lastChunckTimeStamp = new Date().getTime();
+        if(req.nbrOfWritenBytes2 > 1000000) //supérieur à 1MO
+        {
+            updateUserStats(req.userToken ,req.nbrOfWritenBytes2,0,0,0);
+            req.nbrOfWritenBytes2 = 0;
+        }
     });
 
     req.on('end', function () {
@@ -293,18 +309,25 @@ app.post('/createFolder', function(req, response){
 	response.end('{"result":"success"}');
 });
 
-var deleteFolderRecursive = function(path) {
-  if( fs.existsSync(path) ) {
-    fs.readdirSync(path).forEach(function(file,index){
-      var curPath = path + "/" + file;
-      if(fs.lstatSync(curPath).isDirectory()) { // recurse
-        deleteFolderRecursive(curPath);
-      } else { // delete file
-        fs.unlinkSync(curPath);
-      }
-    });
-    fs.rmdirSync(path);
-  }
+var deleteFolderRecursive = function(token,path) {
+    var numberOfDeletedFiles = 0;
+    var deletedSpace = 0;
+    if( fs.existsSync(path) ) {
+        fs.readdirSync(path).forEach(function(file,index){
+          var curPath = path + "/" + file;
+          if(fs.lstatSync(curPath).isDirectory()) { // recurse
+              deleteFolderRecursive(curPath);
+          } else { // delete file
+              var fileStats = fs.statSync(curPath);
+              var fileSize  = fileStats['size']; // in bytes
+              fs.unlinkSync(curPath);
+              numberOfDeletedFiles++;
+              deletedSpace += fileSize;
+          }
+        });
+        fs.rmdirSync(path);
+    }
+    updateUserStats(token,0,deletedSpace,0,numberOfDeletedFiles);
 };
 
 /***
@@ -326,11 +349,18 @@ app.post('/delete', function(req, response){
 	if(req.body.path.length === 0)
 		path = '/';
 	var fileName = req.body.fileName;
+
+    var fileStats = fs.statSync(path + readdir[i]);
+    var fileSize  = fileStats['size']; // in bytes
+
 	if(fs.existsSync("/iscsi/" + userId + path + fileName) && fs.lstatSync("/iscsi/" + userId + path + fileName).isFile())
 		    			fs.unlinkSync("/iscsi/" + userId + path + fileName);
 	if(fs.existsSync("/iscsi/" + userId + path + fileName) && fs.lstatSync("/iscsi/" + userId + path + fileName).isDirectory())
-					deleteFolderRecursive("/iscsi/" + userId + path + fileName);
-	response.setHeader('Access-Control-Allow-Origin', '*');
+					deleteFolderRecursive(req.body.token,"/iscsi/" + userId + path + fileName);
+
+    updateUserStats(req.body.token,0,fileSize,0,1);
+
+    response.setHeader('Access-Control-Allow-Origin', '*');
 	response.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
 	response.end('{"result":"success"}');
 });

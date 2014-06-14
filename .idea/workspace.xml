@@ -26,7 +26,7 @@
       <file leaf-file-name="app.js" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/app.js">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="512" column="57" selection-start="16870" selection-end="16870" vertical-scroll-proportion="0.3467742" vertical-offset="8958" max-vertical-offset="10062">
+            <state line="175" column="128" selection-start="6357" selection-end="6357" vertical-scroll-proportion="0.38396624" vertical-offset="2877" max-vertical-offset="10602">
               <folding />
             </state>
           </provider>
@@ -77,8 +77,8 @@
   </component>
   <component name="PhpWorkspaceProjectConfiguration" backward_compatibility_performed="true" />
   <component name="ProjectFrameBounds">
-    <option name="x" value="261" />
-    <option name="y" value="48" />
+    <option name="x" value="348" />
+    <option name="y" value="54" />
     <option name="width" value="1718" />
     <option name="height" value="901" />
   </component>
@@ -193,7 +193,7 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="261" y="48" width="1718" height="901" extended-state="0" />
+    <frame x="348" y="54" width="1718" height="901" extended-state="0" />
     <editor active="true" />
     <layout>
       <window_info id="Changes" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
@@ -340,7 +340,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/app.js">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="512" column="57" selection-start="16870" selection-end="16870" vertical-scroll-proportion="0.3467742" vertical-offset="8958" max-vertical-offset="10062">
+        <state line="175" column="128" selection-start="6357" selection-end="6357" vertical-scroll-proportion="0.38396624" vertical-offset="2877" max-vertical-offset="10602">
           <folding />
         </state>
       </provider>
