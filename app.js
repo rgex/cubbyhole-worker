@@ -37,7 +37,22 @@ var getUserInformationsWithToken = function(token) {
     var resJson = req.end();
     return JSON.parse(resJson['data']);
 }
+/*
+var updateUserStats = function(token,) {
 
+    var post_data = querystring.stringify({
+        'token' : token
+    });
+
+    var req = httpsync.request({
+        url: "http://" + webserviceHost + webservicePath + "?action=getUserIdWithToken",
+        method: "POST"
+    });
+    req.write(post_data);
+    var resJson = req.end();
+    return JSON.parse(resJson['data']);
+}
+*/
 var handleDownload = function(req, res) {
     console.log("download with token");
     var urlParts = urlHelper.parse(req.url, true);
@@ -186,7 +201,7 @@ var handleUpload = function(fReq, fRes) {
     });
 }
 /***
- * Calculate to wait between 2 chucks to reach a certain download speed.
+ * Calculate time to wait between 2 chucks to reach a certain download speed.
  *
  * @param wantedSpeed in bytes/second
  * @param chunckSize in bytes
@@ -410,7 +425,7 @@ app.post('/makePrivate', function(req, response){
 *	@require 
 *	- token
 *	- path
-*	
+*	- or userId
 *
 ***/
 app.post('/list', function(req, response){
@@ -425,7 +440,7 @@ app.post('/list', function(req, response){
    var showPrivate = false;
    if(typeof userInfos['id'] !== 'undefined') {
        var userId = userInfos['id'];
-       showPrivate = true
+       showPrivate = true;
    }
    else {
        var userId = req.body.userId;
@@ -472,4 +487,57 @@ app.post('/list', function(req, response){
    response.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
    response.end(JSON.stringify(jsonResponse).toString('utf8'));
    
+});
+
+var listAll = function (userId, path) {
+    var showPrivate = true;
+    var readdir = fs.readdirSync('/iscsi/' + userId + path);
+
+    if(fs.existsSync('/iscsi/' + userId + path + ".publicFiles.json")) {
+        var publicFilesJson = fs.readFileSync('/iscsi/' + userId + path + ".publicFiles.json", "utf8");
+        var publicFiles = JSON.parse(publicFilesJson);
+    }
+
+    var res = new Array();
+
+    for(var i in readdir)
+    {
+        var publicStatus = "priv";
+        for(var z in publicFiles) {
+            if(publicFiles[z] === readdir[i])
+                publicStatus = "pub";
+        }
+
+        if(readdir[i] !== ".publicFiles.json") {
+            if(fs.lstatSync('/iscsi/' + userId + path + readdir[i]).isDirectory()) {
+                if(publicStatus === "pub" || showPrivate)
+                    res.push(new Array('D',path + readdir[i],'0',publicStatus));
+                    var res2 = listAll(userId, path + readdir[i] + '/');
+                    res = res.concat(res2);
+            }
+            else {
+                var fileStats = fs.statSync('/iscsi/' + userId + path + readdir[i]);
+                var fileSize  = fileStats['size']; // in bytes
+                if(publicStatus === "pub" || showPrivate)
+                    res.push(new Array('F',path + readdir[i],fileSize,publicStatus));
+            }
+        }
+    }
+    return res;
+}
+/***
+ *
+ *	list all files (for syncronisation)
+ *	@require
+ *	- token
+ *
+ ***/
+app.post('/listAll', function(req, response){
+    var userId = 1;
+
+    var jsonResponse = listAll(userId, '/');
+
+    response.setHeader('Access-Control-Allow-Origin', '*');
+    response.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
+    response.end(JSON.stringify(jsonResponse).toString('utf8'));
 });
