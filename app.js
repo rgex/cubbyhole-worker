@@ -511,7 +511,11 @@ var listAll = function (userId, path) {
         if(readdir[i] !== ".publicFiles.json") {
             if(fs.lstatSync('/iscsi/' + userId + path + readdir[i]).isDirectory()) {
                 if(publicStatus === "pub" || showPrivate)
-                    res.push(new Array('D',path + readdir[i],'0',publicStatus));
+                    res.push(new Array('D',
+                        path + readdir[i],
+                        '0',
+                        publicStatus,
+                        Math.round(fs.lstatSync('/iscsi/' + userId + path + readdir[i]).mtime.getTime())/1000));
                     var res2 = listAll(userId, path + readdir[i] + '/');
                     res = res.concat(res2);
             }
@@ -519,7 +523,11 @@ var listAll = function (userId, path) {
                 var fileStats = fs.statSync('/iscsi/' + userId + path + readdir[i]);
                 var fileSize  = fileStats['size']; // in bytes
                 if(publicStatus === "pub" || showPrivate)
-                    res.push(new Array('F',path + readdir[i],fileSize,publicStatus));
+                    res.push(new Array('F',
+                        path + readdir[i],
+                        fileSize,
+                        publicStatus,
+                        Math.round(fs.lstatSync('/iscsi/' + userId + path + readdir[i]).mtime.getTime())/1000));
             }
         }
     }
@@ -533,7 +541,10 @@ var listAll = function (userId, path) {
  *
  ***/
 app.post('/listAll', function(req, response){
-    var userId = 1;
+    var userInfos = getUserInformationsWithToken(req.body.token);
+    if(typeof userInfos['id'] === 'undefined')
+        response.end(''); //error
+    var userId = userInfos['id'];
 
     var jsonResponse = listAll(userId, '/');
 
