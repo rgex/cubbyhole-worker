@@ -281,11 +281,18 @@ app.use(bodyParser());
 app.post('/createUser', function(req, response){
 
 	//TODO check masterKey
-   	var userId = req.body.userId;
-	fs.mkdirSync('/iscsi/' + userId,0777);
-	response.setHeader('Access-Control-Allow-Origin', '*');
-	response.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
-	response.end('{"result":"success"}');
+	if(req.body.masterKey === 'SsdsdSD77DD544FF') {
+	   	var userId = req.body.userId;
+		fs.mkdirSync('/iscsi/' + userId,0777);
+		response.setHeader('Access-Control-Allow-Origin', '*');
+		response.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
+		response.end('{"result":"success"}');
+	}
+	else {
+		response.setHeader('Access-Control-Allow-Origin', '*');
+		response.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
+		response.end('{"result":"error, wrong masterkey"}');
+	}
 });
 
 /***
