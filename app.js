@@ -39,19 +39,22 @@ var getUserInformationsWithToken = function(token) {
 }
 
 var updateUserStats = function(token,added,removed,addedFiles,removedFiles) {
-    /*
-    var post_data = querystring.stringify({
-        'token' : token
+
+     var post_data = querystring.stringify({
+        'token' 	: token,
+	'added' 	: added,
+	'removed' 	: removed,
+	'addedFiles' 	: addedFiles,
+	'removedFiles' 	: removedFiles,
     });
 
     var req = httpsync.request({
-        url: "http://" + webserviceHost + webservicePath + "?action=getUserIdWithToken",
+        url: "http://" + webserviceHost + webservicePath + "updateDiskSpace/",
         method: "POST"
     });
     req.write(post_data);
     var resJson = req.end();
-    return JSON.parse(resJson['data']);
-     */
+    console.log(JSON.parse(resJson['data']));
 }
 
 var handleDownload = function(req, res) {
@@ -212,6 +215,8 @@ var handleUpload = function(fReq, fRes) {
         //fs.close(fd);
         setTimeout(function() {
             console.log("ended");
+	    updateUserStats(req.userToken ,req.nbrOfWritenBytes2,0,0,0);
+            req.nbrOfWritenBytes2 = 0;
             res.end("");
         },500);
     });
@@ -357,8 +362,8 @@ app.post('/delete', function(req, response){
 		path = '/';
 	var fileName = req.body.fileName;
 
-    var fileStats = fs.statSync(path + readdir[i]);
-    var fileSize  = fileStats['size']; // in bytes
+    	var fileStats = fs.statSync("/iscsi/" + userId + path + fileName);
+    	var fileSize  = fileStats['size']; // in bytes
 
 	if(fs.existsSync("/iscsi/" + userId + path + fileName) && fs.lstatSync("/iscsi/" + userId + path + fileName).isFile())
 		    			fs.unlinkSync("/iscsi/" + userId + path + fileName);
