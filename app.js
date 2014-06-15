@@ -54,7 +54,9 @@ var updateUserStats = function(token,added,removed,addedFiles,removedFiles) {
         method: "POST"
     });
     req.write(post_data);
-    req.end();
+    var res = req.end();
+    console.log("UPDATE USERSTATS RES : ");
+    console.log(res['data'].toString());
 }
 
 var handleDownload = function(req, res) {
@@ -204,7 +206,7 @@ var handleUpload = function(fReq, fRes) {
         }
         req.lastChunckSize      = chunk.length;
         req.lastChunckTimeStamp = new Date().getTime();
-        if(req.nbrOfWritenBytes2 > 1000000) //supérieur à 1MO
+        if(req.nbrOfWritenBytes2 > 10000000) //supérieur à 10MO
         {
             updateUserStats(req.userToken ,req.nbrOfWritenBytes2,0,0,0);
             req.nbrOfWritenBytes2 = 0;
