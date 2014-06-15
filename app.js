@@ -54,8 +54,7 @@ var updateUserStats = function(token,added,removed,addedFiles,removedFiles) {
         method: "POST"
     });
     req.write(post_data);
-    var resJson = req.end();
-    console.log(JSON.parse(resJson['data']));
+    req.end();
 }
 
 var handleDownload = function(req, res) {
