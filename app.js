@@ -8,6 +8,7 @@ var pathHelper = require('path');
 var urlHelper = require('url');
 var async = require('async');
 var querystring = require('querystring');
+var execSync = require('exec-sync');
 
 try {
     var workerJSON = fs.readFileSync("worker.config", "utf8")
@@ -575,6 +576,19 @@ var listAll = function (userId, path) {
     }
     return res;
 }
+
+/***
+ *
+ *	get space avaible on the SAN
+ *
+ ***/
+app.get('/getSanSpace', function(req, response){
+    var dfIscsi = execSync('df /iscsi');
+    response.setHeader('Access-Control-Allow-Origin', '*');
+    response.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
+    response.end(dfIscsi);
+});
+
 /***
  *
  *	list all files (for syncronisation)

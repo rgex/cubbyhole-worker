@@ -10,5 +10,6 @@
   , "url" : "*"
   , "querystring" : "*"
   , "async" : "*"
+  , "exec-sync" : "*"
   }
 }
