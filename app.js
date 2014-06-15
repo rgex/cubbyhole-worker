@@ -30,7 +30,7 @@ var getUserInformationsWithToken = function(token) {
     });
 
     var req = httpsync.request({
-        url: "http://" + webserviceHost + webservicePath + "?action=getUserIdWithToken",
+        url: "http://" + webserviceHost + webservicePath + "getUserWithToken/",
         method: "POST"
     });
     req.write(post_data);
