@@ -13,7 +13,7 @@ Worker Setup
 ---
 
 
-**Install g++, Git, cURL **
+**Install g++, Git, cURL**
 ```
 apt-get install git curl g++
 ```
