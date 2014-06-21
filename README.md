@@ -8,6 +8,18 @@ This is a Supinfo group project.
  * 162095 Jérémy CETOUT
  * 164340 Mike ROUSSEAEU
 
+The project can be downloaded here :
+
+ - https://github.com/rgex/cubbyhole-server/blob/master/M1%20-%20Cubbyhole.pdf?raw=true
+
+Other related project repositories are :
+
+ - https://github.com/rgex/cubbyhole-server
+
+ - https://github.com/rgex/cubbyhole-mobileclient
+
+ - https://github.com/rgex/cubbyhole-java
+
 
 Worker Setup
 ---
