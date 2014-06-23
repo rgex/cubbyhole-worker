@@ -11,7 +11,7 @@ var querystring = require('querystring');
 var execSync = require('exec-sync');
 
 try {
-    var workerJSON = fs.readFileSync("worker.config", "utf8")
+    var workerJSON = fs.readFileSync("/var/cubbyhole-worker/worker.config", "utf8")
     var workerConfig = JSON.parse(workerJSON);
     console.log(workerConfig.webservicePath);
     webserviceHost = workerConfig.webserviceHost;
