@@ -273,7 +273,9 @@ net.createServer(handleHttpReq).listen(9999, function(){
  ***/
 var app = express();
 app.listen(3000);
-app.use(bodyParser());
+app.use(bodyParser.urlencoded({
+  extended: true
+}));
 
 
 /***
