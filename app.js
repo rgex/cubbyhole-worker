@@ -611,3 +611,17 @@ app.post('/listAll', function(req, response){
     response.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
     response.end(JSON.stringify(jsonResponse).toString('utf8'));
 });
+
+
+/***
+ *
+ *      get index
+ *
+ ***/
+app.get('/', function(req, response){
+    var hostname = execSync('hostname');
+    response.setHeader('Access-Control-Allow-Origin', '*');
+    response.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
+    response.end(" <b>" +  hostname +" </b> is running!");
+});
+
