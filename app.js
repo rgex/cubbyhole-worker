@@ -71,7 +71,7 @@ var handleDownload = function(req, res) {
         var userInfos = getUserInformationsWithToken(urlParts.query.token);
         downloadSpeed = userInfos['downloadSpeed'];
     }
-    var filePath = '/iscsi/' + urlParts.query.userid + urlParts.query.file;
+    var filePath = '/iscsi/' + urlParts.query.userid + urlParts.query.path + urlParts.query.file;
     var fileStat = fs.lstatSync(filePath);
     res.writeHead(200, { 'Content-Type': 'application/force-download', 'Content-Length': fileStat.size, 'Content-disposition' : 'attachment; filename=' + pathHelper.basename(filePath) });
     var readStream = fs.createReadStream(filePath, { bufferSize: 64 * 1024 });
