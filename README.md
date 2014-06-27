@@ -53,8 +53,12 @@ npm install
 **Create a worker.config file like this**
 ```
 {
-	"webserviceHost" : "127.0.0.1",
-	"webservicePath" : "/ws/"
+    "webserviceHost"    : "cubbyhole-server",
+    "webservicePath"    : "/ws/",
+    "storageFolder"     : "/iscsi/",
+    "masterKey"         : "SsdsdSD77DD544FF",
+    "WsPort"            : 3000,
+    "DataTransferPort"  : 9999
 }
 ```
 **Update the worker**
