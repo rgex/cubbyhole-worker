@@ -14,12 +14,20 @@ try {
     var workerJSON = fs.readFileSync("/var/cubbyhole-worker/worker.config", "utf8")
     var workerConfig = JSON.parse(workerJSON);
     console.log(workerConfig.webservicePath);
-    webserviceHost = workerConfig.webserviceHost;
-    webservicePort = workerConfig.webservicePort;
-    webservicePath = workerConfig.webservicePath;
+    webserviceHost      = workerConfig.webserviceHost;
+    webservicePath      = workerConfig.webservicePath;
+    storageFolder       = workerConfig.storageFolder;
+    masterKey           = workerConfig.masterKey;
+    WsPort              = workerConfig.WsPort;
+    DataTransferPort    = workerConfig.DataTransferPort;
+
+    if(typeof workerConfig.newRelicToken !== 'undefined')
+        newRelicToken = workerConfig.newRelicToken;
+    else
+        newRelicToken = null;
 }
 catch (err){
-    console.log("something went wrong with the config.json file. Is this file existing?");
+    console.log("something went wrong with the worker.json file. Is this file existing?");
     console.log(err);
     process.abort();
 }
@@ -42,11 +50,11 @@ var getUserInformationsWithToken = function(token) {
 var updateUserStats = function(token,added,removed,addedFiles,removedFiles) {
 
      var post_data = querystring.stringify({
-        'token' 	: token,
-	'added' 	: added,
-	'removed' 	: removed,
-	'addedFiles' 	: addedFiles,
-	'removedFiles' 	: removedFiles,
+        'token' 	    : token,
+	    'added' 	    : added,
+	    'removed' 	    : removed,
+	    'addedFiles' 	: addedFiles,
+	    'removedFiles' 	: removedFiles
     });
 
     var req = httpsync.request({
@@ -66,12 +74,15 @@ var handleDownload = function(req, res) {
     var lastChunckTimeStamp = null;
 
     console.log(urlParts);
+    //sanitize urlParts.query.path
+    //@TODO
+
     var downloadSpeed = 100000; //default download speed if user isn't logged in is equal to 100kB/S
     if(typeof urlParts.query.token !== 'undefined') {
         var userInfos = getUserInformationsWithToken(urlParts.query.token);
         downloadSpeed = userInfos['downloadSpeed'];
     }
-    var filePath = '/iscsi/' + urlParts.query.userid + urlParts.query.path + urlParts.query.file;
+    var filePath = storageFolder + urlParts.query.userid + urlParts.query.path + urlParts.query.file;
     var fileStat = fs.lstatSync(filePath);
     res.writeHead(200, { 'Content-Type': 'application/force-download', 'Content-Length': fileStat.size, 'Content-disposition' : 'attachment; filename=' + pathHelper.basename(filePath) });
     var readStream = fs.createReadStream(filePath, { bufferSize: 64 * 1024 });
@@ -103,6 +114,7 @@ var handleDownload = function(req, res) {
         console.log("download stopped");
     });
 }
+
 var cleanUploadedFile = function (path,fileName){
 
 }
@@ -115,7 +127,7 @@ var handleUpload = function(fReq, fRes) {
     req.lastChunckTimeStamp = null;
     req.nbrOfWritenBytes    = 0;
     req.nbrOfWritenBytes2   = 0;
-    req.userToken   = '';
+    req.userToken     = '';
     var fileInfoChunk = null;
     var fileNameRegex = null;
 
@@ -178,9 +190,9 @@ var handleUpload = function(fReq, fRes) {
             req.userId = userInfos['id'];
             req.uploadSpeed = userInfos['uploadSpeed']; // Bytes/S
 
-            if(fs.existsSync("/iscsi/" + req.userId + path + fileName) && fs.lstatSync("/iscsi/" + req.userId + path + fileName).isFile())
-                fs.unlinkSync("/iscsi/" + req.userId + path + fileName);
-            req.fd = fs.openSync("/iscsi/" + req.userId + path + fileName,'a');
+            if(fs.existsSync(storageFolder + req.userId + path + fileName) && fs.lstatSync(storageFolder + req.userId + path + fileName).isFile())
+                fs.unlinkSync(storageFolder + req.userId + path + fileName);
+            req.fd = fs.openSync(storageFolder + req.userId + path + fileName,'a');
             req.nbrOfWritenBytes = fs.writeSync(req.fd, chunk.slice(i+3,chunk.length), 0, (chunk.length - (i+3)), 0);
             req.nbrOfWritenBytes2 = req.nbrOfWritenBytes;
             console.log("state 1");
@@ -223,6 +235,7 @@ var handleUpload = function(fReq, fRes) {
         },500);
     });
 }
+
 /***
  * Calculate time to wait between 2 chucks to reach a certain download speed.
  *
@@ -242,13 +255,13 @@ var calculatePause = function(wantedSpeed, chunckSize, timeTaken) {
 
 
 /***
- *  création du socket pour l'upload
+ *  Download and upload socket
  *
  ***/
 
 var handleHttpReq = function (req, res) {
 console.log("got req :");
-	if (req.url === '/upload' /*&& req.method === 'POST'*/) {
+	if (req.url === '/upload') {
         setTimeout(function() {
             handleUpload(req, res);
         },1);
@@ -261,18 +274,21 @@ console.log("got req :");
 
 }
 
-net.createServer(handleHttpReq).listen(9999, function(){
-        console.log('SOCKET SERVER Listening at: http://localhost:9999');
+net.createServer(handleHttpReq).listen(DataTransferPort, function(){
+        console.log('TRANSFER SERVER Listening at port : ' + DataTransferPort);
 });
 
 
 
 /***
- *  creation of webserver
- *  Port 3000
+ *  starting webserver for WebService
+ *  delete, rename, list files ...
+ *
  ***/
 var app = express();
-app.listen(3000);
+app.listen(WsPort, function(){
+        console.log('WEBSERVICE SERVER Listening at port : ' + WsPort);
+});
 app.use(bodyParser.urlencoded({
   extended: true
 }));
@@ -290,9 +306,9 @@ app.use(bodyParser.urlencoded({
 app.post('/createUser', function(req, response){
 
 	//TODO check masterKey
-	if(req.body.masterKey === 'SsdsdSD77DD544FF') {
+	if(req.body.masterKey === masterKey) {
 	   	var userId = req.body.userId;
-		fs.mkdirSync('/iscsi/' + userId,0777);
+		fs.mkdirSync(storageFolder + userId,0777);
 		response.setHeader('Access-Control-Allow-Origin', '*');
 		response.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
 		response.end('{"result":"success"}');
@@ -319,7 +335,7 @@ app.post('/createFolder', function(req, response){
     if(typeof userInfos['id'] === 'undefined')
         response.end(''); //error
     var userId = userInfos['id'];
-	fs.mkdirSync('/iscsi/' + userId + req.body.path + req.body.folderName,0777);
+	fs.mkdirSync(storageFolder + userId + req.body.path + req.body.folderName,0777);
 	response.setHeader('Access-Control-Allow-Origin', '*');
 	response.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
 	response.end('{"result":"success"}');
@@ -366,13 +382,13 @@ app.post('/delete', function(req, response){
 		path = '/';
 	var fileName = req.body.fileName;
 
-    	var fileStats = fs.statSync("/iscsi/" + userId + path + fileName);
+    	var fileStats = fs.statSync(storageFolder + userId + path + fileName);
     	var fileSize  = fileStats['size']; // in bytes
 
-	if(fs.existsSync("/iscsi/" + userId + path + fileName) && fs.lstatSync("/iscsi/" + userId + path + fileName).isFile())
-		    			fs.unlinkSync("/iscsi/" + userId + path + fileName);
-	if(fs.existsSync("/iscsi/" + userId + path + fileName) && fs.lstatSync("/iscsi/" + userId + path + fileName).isDirectory())
-					deleteFolderRecursive(req.body.token,"/iscsi/" + userId + path + fileName);
+	if(fs.existsSync(storageFolder + userId + path + fileName) && fs.lstatSync(storageFolder + userId + path + fileName).isFile())
+		    			fs.unlinkSync(storageFolder + userId + path + fileName);
+	if(fs.existsSync(storageFolder + userId + path + fileName) && fs.lstatSync(storageFolder + userId + path + fileName).isDirectory())
+					deleteFolderRecursive(req.body.token,storageFolder + userId + path + fileName);
 
     updateUserStats(req.body.token,0,fileSize,0,1);
 
@@ -391,8 +407,9 @@ app.post('/delete', function(req, response){
  *	- token
  *
  ***/
-app.post('/makePublic', function(req, response){
+app.post('/makePublic', function(req, response) {
 
+    var publicFiles;
     var userInfos = getUserInformationsWithToken(req.body.token);
     if(typeof userInfos['id'] === 'undefined')
         response.end(''); //error
@@ -401,10 +418,10 @@ app.post('/makePublic', function(req, response){
     if(req.body.path.length === 0)
         path = '/';
     var fileName = req.body.fileName;
-    if(fs.existsSync("/iscsi/" + userId + path + fileName)) {
-        if(fs.existsSync("/iscsi/" + userId + path + ".publicFiles.json")) {
-            var publicFilesJson = fs.readFileSync("/iscsi/" + userId + path + ".publicFiles.json", "utf8");
-            var publicFiles = JSON.parse(publicFilesJson);
+    if(fs.existsSync(storageFolder + userId + path + fileName)) {
+        if(fs.existsSync(storageFolder + userId + path + ".publicFiles.json")) {
+            var publicFilesJson = fs.readFileSync(storageFolder + userId + path + ".publicFiles.json", "utf8");
+            publicFiles = JSON.parse(publicFilesJson);
             var found = false;
             for(var i in publicFiles) {
                 if(publicFiles[i] === fileName)
@@ -412,13 +429,13 @@ app.post('/makePublic', function(req, response){
             }
             if(!found)
                 publicFiles.push(fileName);
-            fs.unlinkSync("/iscsi/" + userId + path + ".publicFiles.json");
+            fs.unlinkSync(storageFolder + userId + path + ".publicFiles.json");
         }
         else {
-            var publicFiles = new Array();
+            publicFiles = new Array();
             publicFiles.push(fileName);
         }
-        fs.writeFileSync("/iscsi/" + userId + path + ".publicFiles.json", JSON.stringify(publicFiles));
+        fs.writeFileSync(storageFolder + userId + path + ".publicFiles.json", JSON.stringify(publicFiles));
     }
     response.setHeader('Access-Control-Allow-Origin', '*');
     response.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
@@ -445,9 +462,9 @@ app.post('/makePrivate', function(req, response){
     if(req.body.path.length === 0)
         path = '/';
     var fileName = req.body.fileName;
-    if(fs.existsSync("/iscsi/" + userId + path + fileName)) {
-        if(fs.existsSync("/iscsi/" + userId + path + ".publicFiles.json")) {
-            var publicFilesJson = fs.readFileSync("/iscsi/" + userId + path + ".publicFiles.json", "utf8");
+    if(fs.existsSync(storageFolder + userId + path + fileName)) {
+        if(fs.existsSync(storageFolder + userId + path + ".publicFiles.json")) {
+            var publicFilesJson = fs.readFileSync(storageFolder + userId + path + ".publicFiles.json", "utf8");
             var publicFiles = JSON.parse(publicFilesJson);
             var found = false;
             for(var i in publicFiles) {
@@ -456,9 +473,9 @@ app.post('/makePrivate', function(req, response){
                     continue;
                 }
             }
-            fs.unlinkSync("/iscsi/" + userId + path + ".publicFiles.json");
+            fs.unlinkSync(storageFolder + userId + path + ".publicFiles.json");
         }
-        fs.writeFileSync("/iscsi/" + userId + path + ".publicFiles.json", JSON.stringify(publicFiles));
+        fs.writeFileSync(storageFolder + userId + path + ".publicFiles.json", JSON.stringify(publicFiles));
     }
     response.setHeader('Access-Control-Allow-Origin', '*');
     response.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
@@ -498,7 +515,7 @@ app.post('/list', function(req, response){
       && typeof req.body.path !== 'undefined'
       && req.body.path !== '')
 	path = req.body.path;
-   var path = '/iscsi/' + userId + path;
+   var path = storageFolder + userId + path;
 
     var publicFiles = new Array();
     if(fs.existsSync(path + ".publicFiles.json")) {
@@ -537,10 +554,10 @@ app.post('/list', function(req, response){
 
 var listAll = function (userId, path) {
     var showPrivate = true;
-    var readdir = fs.readdirSync('/iscsi/' + userId + path);
+    var readdir = fs.readdirSync(storageFolder + userId + path);
 
-    if(fs.existsSync('/iscsi/' + userId + path + ".publicFiles.json")) {
-        var publicFilesJson = fs.readFileSync('/iscsi/' + userId + path + ".publicFiles.json", "utf8");
+    if(fs.existsSync(storageFolder + userId + path + ".publicFiles.json")) {
+        var publicFilesJson = fs.readFileSync(storageFolder + userId + path + ".publicFiles.json", "utf8");
         var publicFiles = JSON.parse(publicFilesJson);
     }
 
@@ -555,25 +572,25 @@ var listAll = function (userId, path) {
         }
 
         if(readdir[i] !== ".publicFiles.json") {
-            if(fs.lstatSync('/iscsi/' + userId + path + readdir[i]).isDirectory()) {
+            if(fs.lstatSync(storageFolder + userId + path + readdir[i]).isDirectory()) {
                 if(publicStatus === "pub" || showPrivate)
                     res.push(new Array('D',
                         path + readdir[i],
                         '0',
                         publicStatus,
-                        Math.round(fs.lstatSync('/iscsi/' + userId + path + readdir[i]).mtime.getTime())/1000));
+                        Math.round(fs.lstatSync(storageFolder + userId + path + readdir[i]).mtime.getTime())/1000));
                     var res2 = listAll(userId, path + readdir[i] + '/');
                     res = res.concat(res2);
             }
             else {
-                var fileStats = fs.statSync('/iscsi/' + userId + path + readdir[i]);
+                var fileStats = fs.statSync(storageFolder + userId + path + readdir[i]);
                 var fileSize  = fileStats['size']; // in bytes
                 if(publicStatus === "pub" || showPrivate)
                     res.push(new Array('F',
                         path + readdir[i],
                         fileSize,
                         publicStatus,
-                        Math.round(fs.lstatSync('/iscsi/' + userId + path + readdir[i]).mtime.getTime())/1000));
+                        Math.round(fs.lstatSync(storageFolder + userId + path + readdir[i]).mtime.getTime())/1000));
             }
         }
     }
@@ -586,7 +603,7 @@ var listAll = function (userId, path) {
  *
  ***/
 app.get('/getSanSpace', function(req, response){
-    var dfIscsi = execSync('df /iscsi');
+    var dfIscsi = execSync('df ' + storageFolder);
     response.setHeader('Access-Control-Allow-Origin', '*');
     response.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
     response.end(dfIscsi);
