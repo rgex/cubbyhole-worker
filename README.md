@@ -54,8 +54,7 @@ npm install
 ```
 {
 	"webserviceHost" : "127.0.0.1",
-	"webservicePort" : "80",
-	"webservicePath" : "/fakews/"
+	"webservicePath" : "/ws/"
 }
 ```
 **Update the worker**
