@@ -70,12 +70,32 @@ var updateUserStats = function(token,added,removed,addedFiles,removedFiles) {
 var handleDownload = function(req, res) {
     console.log("download with token");
     var urlParts = urlHelper.parse(req.url, true);
-    var lastChunckSize = null;
+    var lastChunckSize      = null;
     var lastChunckTimeStamp = null;
-
+    var sleepTime           = 0;
     console.log(urlParts);
     //sanitize urlParts.query.path
     //@TODO
+    var regex = /^\.\.\/.{0,}$/;
+    if(urlParts.query.path.match(regex) || urlParts.query.file.match(regex)) {
+        res.end('this is forbidden #1');
+        return;
+    }
+    regex = /^.{0,}\/\.\.\/.{0,}$/;
+    if(urlParts.query.path.match(regex) || urlParts.query.file.match(regex)) {
+        res.end('this is forbidden #2');
+        return;
+    }
+    regex = /^\.\/.{0,}/;
+    if(urlParts.query.path.match(regex) || urlParts.query.file.match(regex)) {
+        res.end('this is forbidden #3');
+        return;
+    }
+    regex = /.{0,}\/\.\/.{0,}/;
+    if(urlParts.query.path.match(regex) || urlParts.query.file.match(regex)) {
+        res.end('this is forbidden #4');
+        return;
+    }
 
     var downloadSpeed = 100000; //default download speed if user isn't logged in is equal to 100kB/S
     if(typeof urlParts.query.token !== 'undefined') {
@@ -89,10 +109,10 @@ var handleDownload = function(req, res) {
     readStream.on("data", function(data) {
         readStream.pause();
         if(typeof lastChunckSize !== null && typeof lastChunckTimeStamp !== null) {
-            var sleepTime = calculatePause(downloadSpeed, lastChunckSize, new Date().getTime() - lastChunckTimeStamp); //wanted speed 100kB = 100000 B
+            sleepTime = calculatePause(downloadSpeed, lastChunckSize, new Date().getTime() - lastChunckTimeStamp); //wanted speed 100kB = 100000 B
         }
         else {
-            var sleepTime = 0;
+            sleepTime = 0;
         }
         setTimeout(function() {
             res.write(data);

@@ -23,10 +23,10 @@
   </component>
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="app.js" pinned="false" current="false" current-in-tab="false">
+      <file leaf-file-name="app.js" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/app.js">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="267" column="5" selection-start="9553" selection-end="9553" vertical-scroll-proportion="-9.424242" vertical-offset="4495" max-vertical-offset="11700">
+            <state line="160" column="0" selection-start="5290" selection-end="5290" vertical-scroll-proportion="0.33333334" vertical-offset="2641" max-vertical-offset="12060">
               <folding />
             </state>
           </provider>
@@ -50,10 +50,10 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name=".gitignore" pinned="false" current="true" current-in-tab="true">
+      <file leaf-file-name=".gitignore" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/.gitignore">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="1" column="5" selection-start="19" selection-end="19" vertical-scroll-proportion="0.024390243" vertical-offset="0" max-vertical-offset="738">
+            <state line="1" column="5" selection-start="19" selection-end="19" vertical-scroll-proportion="-0.72" vertical-offset="0" max-vertical-offset="126">
               <folding />
             </state>
           </provider>
@@ -72,15 +72,15 @@
         <option value="$PROJECT_DIR$/fakews/index.php" />
         <option value="$PROJECT_DIR$/help.html" />
         <option value="$PROJECT_DIR$/worker.config" />
-        <option value="$PROJECT_DIR$/app.js" />
         <option value="$PROJECT_DIR$/.gitignore" />
+        <option value="$PROJECT_DIR$/app.js" />
       </list>
     </option>
   </component>
   <component name="PhpWorkspaceProjectConfiguration" backward_compatibility_performed="true" />
   <component name="ProjectFrameBounds">
-    <option name="x" value="247" />
-    <option name="y" value="68" />
+    <option name="x" value="240" />
+    <option name="y" value="64" />
     <option name="width" value="1582" />
     <option name="height" value="907" />
   </component>
@@ -181,7 +181,7 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="247" y="68" width="1582" height="907" extended-state="0" />
+    <frame x="240" y="64" width="1582" height="907" extended-state="0" />
     <editor active="true" />
     <layout>
       <window_info id="Changes" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
@@ -347,13 +347,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/app.js">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="267" column="5" selection-start="9553" selection-end="9553" vertical-scroll-proportion="-9.424242" vertical-offset="4495" max-vertical-offset="11700">
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/worker.config">
       <provider selected="true" editor-type-id="text-editor">
         <state line="8" column="0" selection-start="230" selection-end="230" vertical-scroll-proportion="-5.76" vertical-offset="0" max-vertical-offset="252">
@@ -363,7 +356,14 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/.gitignore">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="1" column="5" selection-start="19" selection-end="19" vertical-scroll-proportion="0.024390243" vertical-offset="0" max-vertical-offset="738">
+        <state line="1" column="5" selection-start="19" selection-end="19" vertical-scroll-proportion="-0.72" vertical-offset="0" max-vertical-offset="126">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/app.js">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="160" column="0" selection-start="5290" selection-end="5290" vertical-scroll-proportion="0.33333334" vertical-offset="2641" max-vertical-offset="12060">
           <folding />
         </state>
       </provider>
