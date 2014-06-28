@@ -74,8 +74,8 @@ var handleDownload = function(req, res) {
     var lastChunckTimeStamp = null;
     var sleepTime           = 0;
     console.log(urlParts);
+
     //sanitize urlParts.query.path
-    //@TODO
     var regex = /^\.\.\/.{0,}$/;
     if(urlParts.query.path.match(regex) || urlParts.query.file.match(regex)) {
         res.end('this is forbidden #1');
@@ -98,9 +98,35 @@ var handleDownload = function(req, res) {
     }
 
     var downloadSpeed = 100000; //default download speed if user isn't logged in is equal to 100kB/S
+                                // @TODO add this in config file
+
+    var userId = null;
     if(typeof urlParts.query.token !== 'undefined') {
         var userInfos = getUserInformationsWithToken(urlParts.query.token);
+        userId        = userInfos['id'];
         downloadSpeed = userInfos['downloadSpeed'];
+    }
+
+    if(userId !== urlParts.query.userid) {
+        //if user is not downloading a file he owns whe check if has the right to download it.
+        console.log("preparing to download file from an other user.");
+        var publicFiles = new Array();
+        if(fs.existsSync(storageFolder + urlParts.query.userid + urlParts.query.path + ".publicFiles.json")) {
+            var publicFilesJson = fs.readFileSync(storageFolder + urlParts.query.userid + urlParts.query.path + ".publicFiles.json", "utf8");
+            publicFiles = JSON.parse(publicFilesJson);
+        }
+
+        var isPublic = false;
+
+        for(var z in publicFiles) {
+            if(publicFiles[z] === urlParts.query.file)
+                  isPublic = true;
+        }
+
+        if(!isPublic) {
+            res.end("You are not allowed to download this file.");
+            return;
+        }
     }
     var filePath = storageFolder + urlParts.query.userid + urlParts.query.path + urlParts.query.file;
     var fileStat = fs.lstatSync(filePath);
@@ -136,7 +162,7 @@ var handleDownload = function(req, res) {
 }
 
 var cleanUploadedFile = function (path,fileName){
-
+    // @TODO sanitize bottom of the file
 }
 
 var handleUpload = function(fReq, fRes) {
@@ -183,7 +209,7 @@ var handleUpload = function(fReq, fRes) {
                         done = true;
                     }
                     else if(chunk.toString("utf-8",i+2,i+2+12) === "Content-Type") {
-                        //TODO get filename
+
                         contentTypeFound = true;
                         var z = 1;
                         while(chunk.slice(i-z,i-z+2).toString() !== "\x0D\x0A") {
@@ -205,7 +231,7 @@ var handleUpload = function(fReq, fRes) {
             console.log("token : " + req.userToken );
             console.log("path : " + path);
             console.log("fileName : " + fileName);
-            //TODO get userid and user infos speed, disk usage with token
+
             var userInfos = getUserInformationsWithToken(req.userToken );
             req.userId = userInfos['id'];
             req.uploadSpeed = userInfos['uploadSpeed']; // Bytes/S
@@ -225,11 +251,10 @@ var handleUpload = function(fReq, fRes) {
             req.nbrOfWritenBytes += writenBytes;
             req.nbrOfWritenBytes2 += writenBytes;
             req.pause();
+
+            var sleepTime = 0;
             if(typeof req.lastChunckSize !== null && typeof req.lastChunckTimeStamp !== null) {
-                var sleepTime = calculatePause(req.uploadSpeed, req.lastChunckSize, new Date().getTime() - req.lastChunckTimeStamp); //wanted speed 100kB = 100000 B
-            }
-            else {
-                var sleepTime = 0;
+                sleepTime = calculatePause(req.uploadSpeed, req.lastChunckSize, new Date().getTime() - req.lastChunckTimeStamp); //wanted speed 100kB = 100000 B
             }
             setTimeout(function() {
                 console.log('now upload will start flowing again');
@@ -238,7 +263,7 @@ var handleUpload = function(fReq, fRes) {
         }
         req.lastChunckSize      = chunk.length;
         req.lastChunckTimeStamp = new Date().getTime();
-        if(req.nbrOfWritenBytes2 > 10000000) //supérieur à 10MO
+        if(req.nbrOfWritenBytes2 > 10000000) //bigger than 10MB
         {
             updateUserStats(req.userToken ,req.nbrOfWritenBytes2,0,0,0);
             req.nbrOfWritenBytes2 = 0;
@@ -287,8 +312,8 @@ console.log("got req :");
         },1);
 	}
 
-	DownloadWTokenRegex = new RegExp('^.{0,}download/\\?userid=(.{1,})&file=(.{1,})&token=(.{1,})$','i'); //not very secured
-	if(DownloadWTokenRegex.test(req.url)) { //download with token
+	var DownloadRegex = new RegExp('^.{0,}download/.{0,}$','i'); //not very secured
+	if(DownloadRegex.test(req.url)) { //download with token
         handleDownload(req, res);
 	}
 
@@ -325,7 +350,6 @@ app.use(bodyParser.urlencoded({
 ***/
 app.post('/createUser', function(req, response){
 
-	//TODO check masterKey
 	if(req.body.masterKey === masterKey) {
 	   	var userId = req.body.userId;
 		fs.mkdirSync(storageFolder + userId,0777);
